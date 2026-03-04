@@ -1,3 +1,5 @@
+import { parse as parseValue } from "./types"
+
 export function deserialize<T>(json: string, metadata: T): T {
     const encoder = new TextEncoder()
     const jsonBytes = encoder.encode(json)
@@ -11,6 +13,7 @@ export function deserialize<T>(json: string, metadata: T): T {
     const LINE_END = () => 13
     const SPACE = () => 32
     const SEPARATOR = () => 58 //:
+    const CLOSE = () => 125 //}
 
     let skipWhitespace = () => {
         let byte = jsonBytes[position]
@@ -26,19 +29,6 @@ export function deserialize<T>(json: string, metadata: T): T {
         }))
 
     position++ //{
-
-    const parseValue = (
-        type: "string" | "number" | "bigint" | "boolean" | "symbol" | "undefined" | "object" | "function",
-        bytes: Uint8Array<ArrayBuffer>,
-        offset: number): any => {
-
-        switch (type) {
-            case "number":
-                return bytes[offset] - 48
-            default:
-                return null
-        }
-    }
 
     const result = JSON.parse(JSON.stringify(metadata))
 
@@ -69,7 +59,14 @@ export function deserialize<T>(json: string, metadata: T): T {
         position++ //:
         skipWhitespace()
 
-        result[field.name] = parseValue(field.type, jsonBytes, position)
+        let valueEndPosition = position
+        while (jsonBytes[valueEndPosition] !== CLOSE()) {
+            valueEndPosition++
+        }
+
+        result[field.name] = parseValue(field.type, jsonBytes, position, valueEndPosition)
+
+        position = valueEndPosition
 
         skipWhitespace()
     })
