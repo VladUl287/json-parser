@@ -7,12 +7,14 @@ export function deserialize<T>(json: string, metadata: T): T {
     console.log(jsonBytes)
 
     let position = 0
-
-    const TAB = () => 9
-    const NEW_LINE = () => 10
-    const LINE_END = () => 13
+    
+    const TAB = () => 9 //\t
+    const NEW_LINE = () => 10 //\n
+    const LINE_END = () => 13 //\r
     const SPACE = () => 32
+    const QUOTE = () => 34 //"
     const SEPARATOR = () => 58 //:
+    const OPEN = () => 123 //{
     const CLOSE = () => 125 //}
 
     let skipWhitespace = () => {
