@@ -1,5 +1,5 @@
 import { deserialize } from "./json"
-import { toMetadata } from "./types"
+import { toMetadata } from "./metadata"
 
 let obj = { id: 15, numbers: [{ value: "test" }], phone: { number: 1, country: "ru" } }
 

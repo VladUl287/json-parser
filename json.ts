@@ -1,5 +1,5 @@
 import { createCache } from "./cache"
-import { parseValue as parseValue, toMetadata, toObject, TypeMetadata } from "./types"
+import { parseValue as parseValue, toMetadata, toObject, TypeMetadata } from "./metadata"
 
 const TAB = () => 9 //\t
 const NEW_LINE = () => 10 //\n
