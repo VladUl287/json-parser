@@ -1,4 +1,5 @@
-import { parseValue as parseValue } from "./types"
+import { createCache } from "./cache"
+import { parseValue as parseValue, TypeMetadata } from "./types"
 
 const TAB = () => 9 //\t
 const NEW_LINE = () => 10 //\n
@@ -18,7 +19,9 @@ let skipWhitespace = (jsonBytes: Uint8Array<ArrayBuffer>, position: number): num
     return position
 }
 
-export function deserialize<T>(json: string, metadata: T): T {
+const metadataCache = createCache<string, TypeMetadata[]>()
+
+export function deserialize<T>(json: string, object: T): T {
     const encoder = new TextEncoder()
     const jsonBytes = encoder.encode(json)
 
@@ -26,17 +29,19 @@ export function deserialize<T>(json: string, metadata: T): T {
 
     let position = 0
 
-    const fields = Object.keys(metadata)
-        .map(key => ({
-            name: key,
-            type: typeof metadata[key as keyof T]
-        }))
+    const metadata = metadataCache.getOrAdd("1", () =>
+        Object.keys(object)
+            .map(key => ({
+                name: key,
+                type: typeof object[key as keyof T]
+            }))
+    )
 
     position++ //{
 
-    const result = JSON.parse(JSON.stringify(metadata))
+    const result = JSON.parse(JSON.stringify(object))
 
-    fields.forEach((field) => {
+    metadata.forEach((field) => {
         position = skipWhitespace(jsonBytes, position)
 
         position++ //"
@@ -68,7 +73,7 @@ export function deserialize<T>(json: string, metadata: T): T {
         while (valueEndByte !== CLOSE() && valueEndByte !== COMMA()) {
             valueEndByte = jsonBytes[valueEndPosition++]
         }
-        
+
         result[field.name] = parseValue(field.type, jsonBytes.slice(position, valueEndPosition - 1))
 
         position = valueEndPosition

@@ -1,4 +1,4 @@
-type TypeName =
+export type TypeName =
     | "string"
     | "number"
     | "bigint"
@@ -7,6 +7,11 @@ type TypeName =
     | "undefined"
     | "object"
     | "function"
+
+export type TypeMetadata = {
+    name: string,
+    type: TypeName
+}
 
 export function parseValue(type: TypeName, bytes: Uint8Array<ArrayBuffer>): any {
     switch (type) {
