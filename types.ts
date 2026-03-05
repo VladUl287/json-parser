@@ -8,6 +8,7 @@ export type TypeName =
     | "object"
     | "array"
     | "function"
+    | "date"
 
 export type TypeMetadata = {
     name: string,
@@ -15,11 +16,17 @@ export type TypeMetadata = {
     optional?: boolean
     nullable?: boolean
     value?: TypeMetadata[]
+    description?: string
+    defaultValue?: unknown
 }
 
 function getType(value: unknown): TypeName {
     if (Array.isArray(value))
         return "array"
+
+    if (value instanceof Date)
+        return "date"
+
     return typeof value
 }
 
@@ -46,28 +53,36 @@ export function toObject(metadata: TypeMetadata[]): object {
             switch (field.type) {
                 case 'string':
                     defaultValue = ''
-                    break;
+                    break
                 case 'number':
                     defaultValue = 0
-                    break;
+                    break
                 case 'boolean':
                     defaultValue = false
-                    break;
+                    break
                 case 'array':
                     defaultValue = field.value
                         ? field.value.map(() => toObject(field.value || []))
                         : []
-                    break;
+                    break
                 case 'object':
                     defaultValue = field.value
                         ? toObject(field.value)
                         : {}
-                    break;
+                    break
                 case 'undefined':
                     defaultValue = undefined
-                    break;
+                    break
+                case 'date':
+                    defaultValue = new Date()
+                    break
                 default:
                     defaultValue = null
+            }
+
+            if (field.nullable) defaultValue = null
+            if (field.optional && field.type !== 'array' && field.type !== 'object') {
+                defaultValue = undefined
             }
 
             return [field.name, defaultValue]
