@@ -1,5 +1,23 @@
 import { parseValue as parseValue } from "./types"
 
+const TAB = () => 9 //\t
+const NEW_LINE = () => 10 //\n
+const LINE_END = () => 13 //\r
+const SPACE = () => 32
+const QUOTE = () => 34 //"
+const COMMA = () => 44
+const SEPARATOR = () => 58 //:
+const OPEN = () => 123 //{
+const CLOSE = () => 125 //}
+
+let skipWhitespace = (jsonBytes: Uint8Array<ArrayBuffer>, position: number): number => {
+    let byte = jsonBytes[position]
+    while (byte === SPACE() || byte === TAB() || byte === NEW_LINE() || byte === LINE_END()) {
+        byte = jsonBytes[position++]
+    }
+    return position
+}
+
 export function deserialize<T>(json: string, metadata: T): T {
     const encoder = new TextEncoder()
     const jsonBytes = encoder.encode(json)
@@ -7,22 +25,6 @@ export function deserialize<T>(json: string, metadata: T): T {
     console.log(jsonBytes)
 
     let position = 0
-
-    const TAB = () => 9 //\t
-    const NEW_LINE = () => 10 //\n
-    const LINE_END = () => 13 //\r
-    const SPACE = () => 32
-    const QUOTE = () => 34 //"
-    const SEPARATOR = () => 58 //:
-    const OPEN = () => 123 //{
-    const CLOSE = () => 125 //}
-
-    let skipWhitespace = () => {
-        let byte = jsonBytes[position]
-        while (byte === SPACE() || byte === TAB() || byte === NEW_LINE() || byte === LINE_END()) {
-            byte = jsonBytes[position++]
-        }
-    }
 
     const fields = Object.keys(metadata)
         .map(key => ({
@@ -34,15 +36,15 @@ export function deserialize<T>(json: string, metadata: T): T {
 
     const result = JSON.parse(JSON.stringify(metadata))
 
-    fields.forEach(field => {
-        skipWhitespace()
+    fields.forEach((field) => {
+        position = skipWhitespace(jsonBytes, position)
 
         position++ //"
 
         let fieldBytes = encoder.encode(field.name)
 
         if (jsonBytes[position + fieldBytes.length + 1] !== SEPARATOR()) {
-            console.error("wrong field with separator")
+            console.error(`wrong field with separator ${jsonBytes[position + fieldBytes.length + 1]}`)
             return
         }
 
@@ -59,7 +61,7 @@ export function deserialize<T>(json: string, metadata: T): T {
 
         position++ //"
         position++ //:
-        skipWhitespace()
+        position = skipWhitespace(jsonBytes, position)
 
         let valueEndPosition = position
         while (jsonBytes[valueEndPosition] !== CLOSE()) {
@@ -70,7 +72,7 @@ export function deserialize<T>(json: string, metadata: T): T {
 
         position = valueEndPosition
 
-        skipWhitespace()
+        position = skipWhitespace(jsonBytes, position)
     })
 
     return result as T
