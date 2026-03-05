@@ -8,14 +8,39 @@ type TypeName =
     | "object"
     | "function"
 
-export function parse(type: TypeName, bytes: Uint8Array<ArrayBuffer>, start: number, end: number): any {
+export function parseBytes(type: TypeName, bytes: Uint8Array<ArrayBuffer>, start: number, end: number): any {
     switch (type) {
         case "number":
             function parseUTF8BytesToNumber(uint8Array: Uint8Array, start: number, end: number): number {
+                let i = start
                 let result = 0
+                let isNegative = false
+                let isFloat = false
+                let decimalPlaces = 0
 
-                for (let i = start; i < end; i++) {
+                const PLUS = () => 43
+                const MINUS = () => 45
+                const DOT = () => 46
+
+                if (uint8Array[i] === MINUS()) {
+                    isNegative = true
+                    i++
+                }
+                else if (uint8Array[i] === PLUS()) {
+                    i++
+                }
+
+                while (i < end) {
                     const byte = uint8Array[i]
+
+                    if (byte === DOT()) {
+                        if (isFloat)
+                            throw new Error('Multiple decimal points')
+
+                        isFloat = true
+                        i++
+                        continue
+                    }
 
                     if (byte < 48 || byte > 57) { // ASCII '0' to '9' are 48-57
                         throw new Error('Non-digit character found');
@@ -23,6 +48,20 @@ export function parse(type: TypeName, bytes: Uint8Array<ArrayBuffer>, start: num
 
                     const digit = byte - 48
                     result = result * 10 + digit
+
+                    if (isFloat) {
+                        decimalPlaces++
+                    }
+
+                    i++
+                }
+
+                if (isFloat && decimalPlaces > 0) {
+                    result = result / Math.pow(10, decimalPlaces)
+                }
+
+                if (isNegative) {
+                    result = -result
                 }
 
                 return result
