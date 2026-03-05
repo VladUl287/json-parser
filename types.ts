@@ -11,6 +11,19 @@ export type TypeName =
 export type TypeMetadata = {
     name: string,
     type: TypeName
+    value?: TypeMetadata[]
+}
+
+export function toMetadata<T>(object: T): TypeMetadata[] | undefined {
+    if (typeof object !== "object")
+        return
+
+    return Object.keys(object)
+        .map(key => ({
+            name: key,
+            type: typeof object[key as keyof T],
+            value: toMetadata(object[key as keyof T])
+        }))
 }
 
 export function parseValue(type: TypeName, bytes: Uint8Array<ArrayBuffer>): any {

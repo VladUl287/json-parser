@@ -1,6 +1,6 @@
 import { deserialize } from "./json"
 
-let obj = { id: 15, number: 2 }
+let obj = { id: 15, number: 2, phone: { number: 1, country: "ru" } }
 
 let value = JSON.stringify(obj)
 
