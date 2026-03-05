@@ -19,7 +19,7 @@ let skipWhitespace = (jsonBytes: Uint8Array<ArrayBuffer>, position: number): num
     return position
 }
 
-const metadataCache = createCache<string, TypeMetadata[]>()
+const metadataCache = createCache<unknown, TypeMetadata[]>()
 
 export function deserialize<T>(json: string, object: T): T {
     const encoder = new TextEncoder()
@@ -29,7 +29,7 @@ export function deserialize<T>(json: string, object: T): T {
 
     let position = 0
 
-    const metadata = metadataCache.getOrAdd("1", () => toMetadata(object))
+    const metadata = metadataCache.getOrAdd(object, () => toMetadata(object))
 
     position++ //{
 
