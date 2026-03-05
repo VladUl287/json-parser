@@ -1,12 +1,12 @@
 import { deserialize } from "./json"
+import { toMetadata } from "./types"
 
-let obj = { id: 15, number: 2, phone: { number: 1, country: "ru" } }
+let obj = { id: 15, numbers: [{ value: "test" }], phone: { number: 1, country: "ru" } }
 
 let value = JSON.stringify(obj)
 
-console.log(value)
-console.log(JSON.parse(value))
+console.log(JSON.stringify(toMetadata(obj)))
 
-let deserialized = deserialize(value, obj)
+// let deserialized = deserialize(value, obj)
 
-console.log(deserialized)
+// console.log(deserialized)

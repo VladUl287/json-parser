@@ -6,6 +6,7 @@ export type TypeName =
     | "symbol"
     | "undefined"
     | "object"
+    | "array"
     | "function"
 
 export type TypeMetadata = {
@@ -14,14 +15,23 @@ export type TypeMetadata = {
     value?: TypeMetadata[]
 }
 
+function getType(value: unknown): TypeName {
+    if (Array.isArray(value))
+        return "array"
+    return typeof value
+}
+
 export function toMetadata<T>(object: T): TypeMetadata[] | undefined {
     if (typeof object !== "object")
         return
 
+    if (Array.isArray(object))
+        return toMetadata(object[0])
+
     return Object.keys(object)
         .map(key => ({
             name: key,
-            type: typeof object[key as keyof T],
+            type: getType(object[key as keyof T]),
             value: toMetadata(object[key as keyof T])
         }))
 }
