@@ -1,5 +1,5 @@
 import { createCache } from "./cache"
-import { parseValue as parseValue, toMetadata, TypeMetadata } from "./types"
+import { parseValue as parseValue, toMetadata, toObject, TypeMetadata } from "./types"
 
 const TAB = () => 9 //\t
 const NEW_LINE = () => 10 //\n
@@ -30,10 +30,9 @@ export function deserialize<T>(json: string, object: T): T {
     let position = 0
 
     const metadata = metadataCache.getOrAdd(object, () => toMetadata(object))
+    const result = toObject(metadata)
 
     position++ //{
-
-    const result = JSON.parse(JSON.stringify(object))
 
     metadata.forEach((field) => {
         position = skipWhitespace(jsonBytes, position)

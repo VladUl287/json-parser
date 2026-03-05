@@ -12,6 +12,8 @@ export type TypeName =
 export type TypeMetadata = {
     name: string,
     type: TypeName
+    optional?: boolean
+    nullable?: boolean
     value?: TypeMetadata[]
 }
 
@@ -34,6 +36,43 @@ export function toMetadata<T>(object: T): TypeMetadata[] | undefined {
             type: getType(object[key as keyof T]),
             value: toMetadata(object[key as keyof T])
         }))
+}
+
+export function toObject(metadata: TypeMetadata[]): object {
+    return Object.fromEntries(
+        metadata.map(field => {
+            let defaultValue: any;
+
+            switch (field.type) {
+                case 'string':
+                    defaultValue = ''
+                    break;
+                case 'number':
+                    defaultValue = 0
+                    break;
+                case 'boolean':
+                    defaultValue = false
+                    break;
+                case 'array':
+                    defaultValue = field.value
+                        ? field.value.map(() => toObject(field.value || []))
+                        : []
+                    break;
+                case 'object':
+                    defaultValue = field.value
+                        ? toObject(field.value)
+                        : {}
+                    break;
+                case 'undefined':
+                    defaultValue = undefined
+                    break;
+                default:
+                    defaultValue = null
+            }
+
+            return [field.name, defaultValue]
+        })
+    )
 }
 
 export function parseValue(type: TypeName, bytes: Uint8Array<ArrayBuffer>): any {
