@@ -44,7 +44,7 @@ export function deserialize<T>(json: string, metadata: T): T {
         let fieldBytes = encoder.encode(field.name)
 
         if (jsonBytes[position + fieldBytes.length + 1] !== SEPARATOR()) {
-            console.error(`wrong field with separator ${jsonBytes[position + fieldBytes.length + 1]}`)
+            console.error(`wrong field with separator '${field.name}' - ${jsonBytes[position + fieldBytes.length + 1]}`)
             return
         }
 
@@ -64,11 +64,12 @@ export function deserialize<T>(json: string, metadata: T): T {
         position = skipWhitespace(jsonBytes, position)
 
         let valueEndPosition = position
-        while (jsonBytes[valueEndPosition] !== CLOSE()) {
-            valueEndPosition++
+        let valueEndByte = jsonBytes[valueEndPosition]
+        while (valueEndByte !== CLOSE() && valueEndByte !== COMMA()) {
+            valueEndByte = jsonBytes[valueEndPosition++]
         }
-
-        result[field.name] = parseValue(field.type, jsonBytes.slice(position, valueEndPosition))
+        
+        result[field.name] = parseValue(field.type, jsonBytes.slice(position, valueEndPosition - 1))
 
         position = valueEndPosition
 
