@@ -19,6 +19,11 @@ export type TypeMetadataField = {
     description?: string
     defaultValue?: unknown
 }
+
+export type JsonOptions = {
+    encoder: TextEncoderCommon
+}
+
 export type TypeMetadata = {
     fields: TypeMetadataField[]
     object: unknown
@@ -99,10 +104,10 @@ export function toObject(metadata: TypeMetadata): object {
     )
 }
 
-export function parseValue(type: TypeName, bytes: Uint8Array<ArrayBuffer>): any {
+export function parseValue(type: TypeName, bytes: Uint8Array<ArrayBuffer>, start: number, end: number): any {
     switch (type) {
         case "number":
-            const str = new TextDecoder().decode(bytes)
+            const str = new TextDecoder().decode(bytes.slice(start, end))
             return Number(str)
         default:
             return null

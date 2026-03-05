@@ -11,68 +11,75 @@ const SEPARATOR = () => 58 //:
 const OPEN = () => 123 //{
 const CLOSE = () => 125 //}
 
-let skipWhitespace = (jsonBytes: Uint8Array<ArrayBuffer>, position: number): number => {
-    let byte = jsonBytes[position]
+function skipWhitespace(bytes: Uint8Array<ArrayBuffer>, i: number): number {
+    let byte = bytes[i]
     while (byte === SPACE() || byte === TAB() || byte === NEW_LINE() || byte === LINE_END()) {
-        byte = jsonBytes[position++]
+        byte = bytes[i++]
     }
-    return position
+    return i
 }
 
 const metadataCache = createCache<unknown, TypeMetadata>()
+
+function parseObject(bytes: Uint8Array<ArrayBuffer>, metadata: TypeMetadata, output: object, encoder: TextEncoder) {
+    let i = 0
+
+    if (bytes[i] !== OPEN())
+        return "fail"
+
+    i++
+
+    metadata.fields.forEach((field) => {
+        i = skipWhitespace(bytes, i)
+
+        if (bytes[i] !== QUOTE()) {
+            throw new Error("not start of field")
+        }
+        i++
+        
+        let fieldName = encoder.encode(field.name)
+
+        const fieldEndPosition = i + fieldName.length
+
+        let j = 0
+        while (i < fieldEndPosition) {
+            if (bytes[i] !== fieldName[j]) {
+                throw new Error(`wrong field with separator '${i} ${j}'`)
+            }
+
+            i++
+            j++
+        }
+
+        i++
+
+        if (bytes[i] !== SEPARATOR()) {
+            throw new Error(`wrong field with separator '${field.name}'`)
+        }
+
+        i = skipWhitespace(bytes, ++i)
+
+        j = i
+        while (bytes[j] !== CLOSE() && bytes[j] !== COMMA()) {
+            j++
+        }
+
+        output[field.name] = parseValue(field.type, bytes, i, j)
+
+        i = j + 1
+        i = skipWhitespace(bytes, i)
+    })
+}
 
 export function deserialize<T>(json: string, object: T): T {
     const encoder = new TextEncoder()
     const jsonBytes = encoder.encode(json)
 
-    console.log(jsonBytes)
-
-    let position = 0
-
     const metadata = metadataCache.getOrAdd(object, () => toMetadata(object))
-    const result = toObject(metadata)
 
-    position++ //{
+    const output = toObject(metadata)
 
-    metadata.fields.forEach((field) => {
-        position = skipWhitespace(jsonBytes, position)
+    parseObject(jsonBytes, metadata, output, encoder)
 
-        position++ //"
-
-        let fieldBytes = encoder.encode(field.name)
-
-        if (jsonBytes[position + fieldBytes.length + 1] !== SEPARATOR()) {
-            console.error(`wrong field with separator '${field.name}' - ${jsonBytes[position + fieldBytes.length + 1]}`)
-            return
-        }
-
-        let fieldNamePosition = 0
-        while (jsonBytes[position] === fieldBytes[fieldNamePosition] && fieldNamePosition < fieldBytes.length) {
-            fieldNamePosition++
-            position++
-        }
-
-        if (fieldNamePosition !== fieldBytes.length) {
-            console.error("wrong field")
-            return
-        }
-
-        position++ //"
-        position++ //:
-        position = skipWhitespace(jsonBytes, position)
-
-        let valueEndPosition = position
-        let valueEndByte = jsonBytes[valueEndPosition]
-        while (valueEndByte !== CLOSE() && valueEndByte !== COMMA()) {
-            valueEndByte = jsonBytes[valueEndPosition++]
-        }
-
-        result[field.name] = parseValue(field.type, jsonBytes.slice(position, valueEndPosition - 1))
-
-        position = valueEndPosition
-
-        position = skipWhitespace(jsonBytes, position)
-    })
-
-    return result as T
+    return output as T
 }
