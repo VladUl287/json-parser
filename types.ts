@@ -16,11 +16,15 @@ export function parseBytes(type: TypeName, bytes: Uint8Array<ArrayBuffer>, start
                 let result = 0
                 let isNegative = false
                 let isFloat = false
+                let hasExponent = false
+                let exponentIsNegative = false
                 let decimalPlaces = 0
 
                 const PLUS = () => 43
                 const MINUS = () => 45
                 const DOT = () => 46
+                const EXPONENT = () => 69
+                const EXPONENT_LOWER = () => 101
 
                 if (uint8Array[i] === MINUS()) {
                     isNegative = true
@@ -42,8 +46,28 @@ export function parseBytes(type: TypeName, bytes: Uint8Array<ArrayBuffer>, start
                         continue
                     }
 
+                    if (byte === EXPONENT() || byte === EXPONENT_LOWER()) {
+                        if (hasExponent)
+                            throw new Error('Multiple exponents')
+
+                        hasExponent = true
+                        i++
+
+                        if (i < end) {
+                            if (uint8Array[i] === MINUS()) {
+                                exponentIsNegative = true
+                                i++
+                            }
+                            else if (uint8Array[i] === PLUS()) {
+                                i++
+                            }
+                        }
+
+                        break
+                    }
+
                     if (byte < 48 || byte > 57) { // ASCII '0' to '9' are 48-57
-                        throw new Error('Non-digit character found');
+                        throw new Error('Non-digit character found')
                     }
 
                     const digit = byte - 48
@@ -54,6 +78,26 @@ export function parseBytes(type: TypeName, bytes: Uint8Array<ArrayBuffer>, start
                     }
 
                     i++
+                }
+
+                let exponent = 0
+                if (hasExponent) {
+                    while (i < end) {
+                        const byte = uint8Array[i]
+
+                        if (byte < 48 || byte > 57) {
+                            throw new Error(`Non-digit in exponent: ${String.fromCharCode(byte)}`)
+                        }
+
+                        exponent = exponent * 10 + (byte - 48)
+                        i++
+                    }
+
+                    if (exponentIsNegative) {
+                        exponent = -exponent;
+                    }
+
+                    result = result * Math.pow(10, exponent)
                 }
 
                 if (isFloat && decimalPlaces > 0) {
