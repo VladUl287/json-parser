@@ -10,14 +10,20 @@ export type TypeName =
     | "function"
     | "date"
 
-export type TypeMetadata = {
+export type TypeMetadataField = {
     name: string,
     type: TypeName
+    value?: TypeMetadata
     optional?: boolean
     nullable?: boolean
-    value?: TypeMetadata[]
     description?: string
     defaultValue?: unknown
+}
+export type TypeMetadata = {
+    fields: TypeMetadataField[]
+    object: unknown
+    // options
+    // converters
 }
 
 function getType(value: unknown): TypeName {
@@ -30,24 +36,27 @@ function getType(value: unknown): TypeName {
     return typeof value
 }
 
-export function toMetadata<T>(object: T): TypeMetadata[] | undefined {
+export function toMetadata<T>(object: T): TypeMetadata | undefined {
     if (typeof object !== "object")
         return
 
     if (Array.isArray(object))
         return toMetadata(object[0])
 
-    return Object.keys(object)
-        .map(key => ({
-            name: key,
-            type: getType(object[key as keyof T]),
-            value: toMetadata(object[key as keyof T])
-        }))
+    return {
+        object: object,
+        fields: Object.keys(object)
+            .map((key): TypeMetadataField => ({
+                name: key,
+                type: getType(object[key as keyof T]),
+                value: toMetadata(object[key as keyof T])
+            }))
+    }
 }
 
-export function toObject(metadata: TypeMetadata[]): object {
+export function toObject(metadata: TypeMetadata): object {
     return Object.fromEntries(
-        metadata.map(field => {
+        metadata.fields.map(field => {
             let defaultValue: any;
 
             switch (field.type) {
@@ -62,7 +71,7 @@ export function toObject(metadata: TypeMetadata[]): object {
                     break
                 case 'array':
                     defaultValue = field.value
-                        ? field.value.map(() => toObject(field.value || []))
+                        ? field.value.fields.map(() => toObject(field.value))
                         : []
                     break
                 case 'object':
