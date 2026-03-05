@@ -1,4 +1,4 @@
-import { parseBytes as parseBytes } from "./types"
+import { parseValue as parseValue } from "./types"
 
 export function deserialize<T>(json: string, metadata: T): T {
     const encoder = new TextEncoder()
@@ -7,7 +7,7 @@ export function deserialize<T>(json: string, metadata: T): T {
     console.log(jsonBytes)
 
     let position = 0
-    
+
     const TAB = () => 9 //\t
     const NEW_LINE = () => 10 //\n
     const LINE_END = () => 13 //\r
@@ -66,7 +66,7 @@ export function deserialize<T>(json: string, metadata: T): T {
             valueEndPosition++
         }
 
-        result[field.name] = parseBytes(field.type, jsonBytes, position, valueEndPosition)
+        result[field.name] = parseValue(field.type, jsonBytes.slice(position, valueEndPosition))
 
         position = valueEndPosition
 
