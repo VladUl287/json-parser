@@ -144,7 +144,7 @@ export function deserialize<T>(json: string, object: T, options?: JsonOptions): 
     const encoder = options?.encoder ?? new TextEncoder()
     const bytes = encoder.encode(json)
 
-    const metadata = metadataCache.getOrAdd(object, () => toMetadata(object))
+    const metadata = metadataCache.getOrAdd(object, (obj) => toMetadata(obj))
 
     const [value, _] = parseValue(metadata.type, bytes, metadata, 0)
 
