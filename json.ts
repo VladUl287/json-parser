@@ -123,9 +123,14 @@ export function parseValue(
     }
 }
 
+export type Converter = {
+    type: TypeName
+    convert: (bytes: Uint8Array<ArrayBuffer>, metadata: Metadata, index: number, options: JsonOptions) => unknown
+}
+
 export type JsonOptions = {
     encoder?: TextEncoder
-    converters?: []
+    converters?: Converter[]
     maxDepth?: number
     allowTrailingCommas?: boolean,
     fieldCaseInsensitive?: boolean
