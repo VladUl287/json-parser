@@ -1,5 +1,5 @@
 import { createCache } from "./cache"
-import { parseValue as parseValue, toMetadata, toObject, TypeMetadata } from "./metadata"
+import { toMetadata, toObject, TypeMetadata, TypeName } from "./metadata"
 
 const TAB = () => 9 //\t
 const NEW_LINE = () => 10 //\n
@@ -10,6 +10,8 @@ const COMMA = () => 44
 const SEPARATOR = () => 58 //:
 const OPEN = () => 123 //{
 const CLOSE = () => 125 //}
+const BRANCE_OPEN = () => 91 //[
+const BRANCE_CLOSE = () => 93 //[
 
 function skipWhitespace(bytes: Uint8Array<ArrayBuffer>, i: number): number {
     let byte = bytes[i]
@@ -21,13 +23,38 @@ function skipWhitespace(bytes: Uint8Array<ArrayBuffer>, i: number): number {
 
 const metadataCache = createCache<unknown, TypeMetadata>()
 
-function parseObject(bytes: Uint8Array<ArrayBuffer>, metadata: TypeMetadata, output: object, encoder: TextEncoder) {
-    let i = 0
+function parseArray(
+    bytes: Uint8Array<ArrayBuffer>, metadata: TypeMetadata, output: object, encoder: TextEncoder,
+    start: number) {
+    let i = start
+
+    if (bytes[i] !== BRANCE_OPEN())
+        return "fail"
+
+    i = skipWhitespace(bytes, i)
+
+    const isPrimitive = typeof metadata.object === 'number'
+
+    while (bytes[i] !== BRANCE_CLOSE()) {
+        if (isPrimitive) {
+
+        }
+
+        i++
+    }
+}
+
+function parseObject(
+    bytes: Uint8Array<ArrayBuffer>, metadata: TypeMetadata, output: object, encoder: TextEncoder,
+    start: number) {
+    let i = start
 
     if (bytes[i] !== OPEN())
         return "fail"
 
     i++
+
+    i = skipWhitespace(bytes, i)
 
     metadata.fields.forEach((field) => {
         i = skipWhitespace(bytes, i)
@@ -36,7 +63,7 @@ function parseObject(bytes: Uint8Array<ArrayBuffer>, metadata: TypeMetadata, out
             throw new Error("not start of field")
         }
         i++
-        
+
         let fieldName = encoder.encode(field.name)
 
         const fieldEndPosition = i + fieldName.length
@@ -64,11 +91,29 @@ function parseObject(bytes: Uint8Array<ArrayBuffer>, metadata: TypeMetadata, out
             j++
         }
 
-        output[field.name] = parseValue(field.type, bytes, i, j)
+        output[field.name] = parseValue(field.type, bytes, metadata, output, i, j)
 
         i = j + 1
         i = skipWhitespace(bytes, i)
     })
+}
+
+export function parseValue(
+    type: TypeName, bytes: Uint8Array<ArrayBuffer>, metadata: TypeMetadata, output: object, start: number, end: number): any {
+
+    let i = skipWhitespace(bytes, start)
+
+    switch (type) {
+        case "number":
+            const str = new TextDecoder().decode(bytes.slice(i, end))
+            return Number(str)
+        case "array":
+            return parseArray(bytes, metadata, output, new TextEncoder(), i)
+        case "object":
+            return parseObject(bytes, metadata, output, new TextEncoder(), i)
+        default:
+            return null
+    }
 }
 
 export function deserialize<T>(json: string, object: T): T {
@@ -79,7 +124,7 @@ export function deserialize<T>(json: string, object: T): T {
 
     const output = toObject(metadata)
 
-    parseObject(jsonBytes, metadata, output, encoder)
+    parseValue(metadata.type, jsonBytes, metadata, output, 0, jsonBytes.length)
 
     return output as T
 }

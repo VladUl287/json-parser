@@ -26,6 +26,7 @@ export type JsonOptions = {
 
 export type TypeMetadata = {
     fields: TypeMetadataField[]
+    type: TypeName
     object: unknown
     // options
     // converters
@@ -50,6 +51,7 @@ export function toMetadata<T>(object: T): TypeMetadata | undefined {
 
     return {
         object: object,
+        type: getType(object),
         fields: Object.keys(object)
             .map((key): TypeMetadataField => ({
                 name: key,
@@ -102,16 +104,6 @@ export function toObject(metadata: TypeMetadata): object {
             return [field.name, defaultValue]
         })
     )
-}
-
-export function parseValue(type: TypeName, bytes: Uint8Array<ArrayBuffer>, start: number, end: number): any {
-    switch (type) {
-        case "number":
-            const str = new TextDecoder().decode(bytes.slice(start, end))
-            return Number(str)
-        default:
-            return null
-    }
 }
 
 export function parseUTF8BytesToNumber(uint8Array: Uint8Array, start: number, end: number): number {
