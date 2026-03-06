@@ -11,7 +11,7 @@ const SEPARATOR = () => 58 //:
 const OPEN = () => 123 //{
 const CLOSE = () => 125 //}
 const BRANCE_OPEN = () => 91 //[
-const BRANCE_CLOSE = () => 93 //[
+const BRANCE_CLOSE = () => 93 //]
 
 function skipWhitespace(bytes: Uint8Array<ArrayBuffer>, i: number): number {
     let byte = bytes[i]
@@ -29,21 +29,17 @@ function parseArray(
     let i = start
 
     if (bytes[i] !== BRANCE_OPEN())
-        return ["fail", -1]
+        return ["fail parseArray", -1]
 
     i = skipWhitespace(bytes, i)
 
-    const isPrimitive = typeof metadata.object === 'number'
 
     while (bytes[i] !== BRANCE_CLOSE()) {
-        if (isPrimitive) {
-
-        }
 
         i++
     }
 
-    return [output, i]
+    return [output, i + 1]
 }
 
 function parseObject(
@@ -52,7 +48,7 @@ function parseObject(
     let i = start
 
     if (bytes[i] !== OPEN())
-        return ["fail", -1]
+        return ["fail parseObject", -1]
 
     i++
 
@@ -92,13 +88,12 @@ function parseObject(
 
         output[field.name] = value
         i = index
-        i = skipWhitespace(bytes, i)
     })
 
     i = skipWhitespace(bytes, i)
 
     if (bytes[i] !== CLOSE())
-        return ["fail", -1]
+        return ["fail parseObject 2", -1]
 
     return [output, i]
 }
@@ -115,7 +110,7 @@ export function parseValue(
                 j++
             }
             const str = new TextDecoder().decode(bytes.slice(i, j))
-            return [Number(str), j]
+            return [Number(str), j + 1]
         case "array":
             return parseArray(bytes, metadata, output, new TextEncoder(), i)
         case "object":
@@ -129,11 +124,11 @@ export function deserialize<T>(json: string, object: T): T {
     const encoder = new TextEncoder()
     const jsonBytes = encoder.encode(json)
 
+    console.log(jsonBytes)
+
     const metadata = metadataCache.getOrAdd(object, () => toMetadata(object))
 
-    const output = toObject(metadata)
+    const [value, _] = parseValue(metadata.type, jsonBytes, metadata, toObject(metadata), 0)
 
-    parseValue(metadata.type, jsonBytes, metadata, output, 0)
-
-    return output as T
+    return value as T
 }
