@@ -10,22 +10,18 @@ export type TypeName =
     | "function"
     | "date"
 
-export type TypeMetadataField = {
+export type MetadataField = {
     name: string,
     type: TypeName
-    value?: TypeMetadata
+    value?: Metadata
     optional?: boolean
     nullable?: boolean
     description?: string
     defaultValue?: unknown
 }
 
-export type JsonOptions = {
-    encoder: TextEncoderCommon
-}
-
-export type TypeMetadata = {
-    fields: TypeMetadataField[]
+export type Metadata = {
+    fields: MetadataField[]
     type: TypeName
     object: unknown
     // options
@@ -42,7 +38,7 @@ function getType(value: unknown): TypeName {
     return typeof value
 }
 
-export function toMetadata<T>(object: T): TypeMetadata | undefined {
+export function toMetadata<T>(object: T): Metadata | undefined {
     if (typeof object !== "object")
         return
 
@@ -53,7 +49,7 @@ export function toMetadata<T>(object: T): TypeMetadata | undefined {
         object: object,
         type: getType(object),
         fields: Object.keys(object)
-            .map((key): TypeMetadataField => ({
+            .map((key): MetadataField => ({
                 name: key,
                 type: getType(object[key as keyof T]),
                 value: toMetadata(object[key as keyof T])
@@ -61,7 +57,7 @@ export function toMetadata<T>(object: T): TypeMetadata | undefined {
     }
 }
 
-export function toObject(metadata: TypeMetadata): object {
+export function toObject(metadata: Metadata): object {
     return Object.fromEntries(
         metadata.fields.map(field => {
             let defaultValue: any;

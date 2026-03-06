@@ -1,5 +1,5 @@
 import { createCache } from "./cache"
-import { toMetadata, toObject, TypeMetadata, TypeName } from "./metadata"
+import { toMetadata, toObject, Metadata, TypeName } from "./metadata"
 
 const TAB = () => 9 //\t
 const NEW_LINE = () => 10 //\n
@@ -21,10 +21,8 @@ function skipWhitespace(bytes: Uint8Array<ArrayBuffer>, i: number): number {
     return i
 }
 
-const metadataCache = createCache<unknown, TypeMetadata>()
-
 function parseArray(
-    bytes: Uint8Array<ArrayBuffer>, metadata: TypeMetadata, output: object, encoder: TextEncoder,
+    bytes: Uint8Array<ArrayBuffer>, metadata: Metadata, output: object, encoder: TextEncoder,
     start: number): [unknown, number] {
     let i = start
 
@@ -43,7 +41,7 @@ function parseArray(
 }
 
 function parseObject(
-    bytes: Uint8Array<ArrayBuffer>, metadata: TypeMetadata, output: object, encoder: TextEncoder,
+    bytes: Uint8Array<ArrayBuffer>, metadata: Metadata, output: object, encoder: TextEncoder,
     start: number): [unknown, number] {
     let i = start
 
@@ -98,8 +96,16 @@ function parseObject(
     return [output, i]
 }
 
+function* gen1(): Iterable<readonly [PropertyKey, any]> {
+    yield ["field1", 1]
+    yield ["field2", 2]
+}
+
 export function parseValue(
-    type: TypeName, bytes: Uint8Array<ArrayBuffer>, metadata: TypeMetadata, output: object, start: number): [unknown, number] {
+    type: TypeName, bytes: Uint8Array<ArrayBuffer>, metadata: Metadata, output: object, start: number): [unknown, number] {
+
+    let a = gen1()
+    Object.fromEntries(a)
 
     let i = skipWhitespace(bytes, start)
 
@@ -120,15 +126,25 @@ export function parseValue(
     }
 }
 
-export function deserialize<T>(json: string, object: T): T {
-    const encoder = new TextEncoder()
-    const jsonBytes = encoder.encode(json)
+export type JsonOptions = {
+    encoder?: TextEncoder
+    converters?: []
+    maxDepth?: number
+    allowTrailingCommas?: boolean,
+    fieldCaseInsensitive?: boolean
+    allowDuplicateProperties?: boolean
+    commentHandling: string
+}
 
-    console.log(jsonBytes)
+const metadataCache = createCache<unknown, Metadata>()
+
+export function deserialize<T>(json: string, object: T, options?: JsonOptions): T {
+    const encoder = options?.encoder ?? new TextEncoder()
+    const bytes = encoder.encode(json)
 
     const metadata = metadataCache.getOrAdd(object, () => toMetadata(object))
 
-    const [value, _] = parseValue(metadata.type, jsonBytes, metadata, toObject(metadata), 0)
+    const [value, _] = parseValue(metadata.type, bytes, metadata, toObject(metadata), 0)
 
     return value as T
 }
