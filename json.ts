@@ -25,11 +25,11 @@ const metadataCache = createCache<unknown, TypeMetadata>()
 
 function parseArray(
     bytes: Uint8Array<ArrayBuffer>, metadata: TypeMetadata, output: object, encoder: TextEncoder,
-    start: number) {
+    start: number): [unknown, number] {
     let i = start
 
     if (bytes[i] !== BRANCE_OPEN())
-        return "fail"
+        return ["fail", -1]
 
     i = skipWhitespace(bytes, i)
 
@@ -42,15 +42,17 @@ function parseArray(
 
         i++
     }
+
+    return [output, i]
 }
 
 function parseObject(
     bytes: Uint8Array<ArrayBuffer>, metadata: TypeMetadata, output: object, encoder: TextEncoder,
-    start: number) {
+    start: number): [unknown, number] {
     let i = start
 
     if (bytes[i] !== OPEN())
-        return "fail"
+        return ["fail", -1]
 
     i++
 
@@ -86,27 +88,34 @@ function parseObject(
 
         i = skipWhitespace(bytes, ++i)
 
-        j = i
-        while (bytes[j] !== CLOSE() && bytes[j] !== COMMA()) {
-            j++
-        }
+        const [value, index] = parseValue(field.type, bytes, field.value, output[field.name], i)
 
-        output[field.name] = parseValue(field.type, bytes, metadata, output, i, j)
-
-        i = j + 1
+        output[field.name] = value
+        i = index
         i = skipWhitespace(bytes, i)
     })
+
+    i = skipWhitespace(bytes, i)
+
+    if (bytes[i] !== CLOSE())
+        return ["fail", -1]
+
+    return [output, i]
 }
 
 export function parseValue(
-    type: TypeName, bytes: Uint8Array<ArrayBuffer>, metadata: TypeMetadata, output: object, start: number, end: number): any {
+    type: TypeName, bytes: Uint8Array<ArrayBuffer>, metadata: TypeMetadata, output: object, start: number): [unknown, number] {
 
     let i = skipWhitespace(bytes, start)
 
     switch (type) {
         case "number":
-            const str = new TextDecoder().decode(bytes.slice(i, end))
-            return Number(str)
+            let j = i
+            while (bytes[j] !== CLOSE() && bytes[j] !== COMMA()) {
+                j++
+            }
+            const str = new TextDecoder().decode(bytes.slice(i, j))
+            return [Number(str), j]
         case "array":
             return parseArray(bytes, metadata, output, new TextEncoder(), i)
         case "object":
@@ -124,7 +133,7 @@ export function deserialize<T>(json: string, object: T): T {
 
     const output = toObject(metadata)
 
-    parseValue(metadata.type, jsonBytes, metadata, output, 0, jsonBytes.length)
+    parseValue(metadata.type, jsonBytes, metadata, output, 0)
 
     return output as T
 }
