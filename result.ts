@@ -28,10 +28,10 @@ class Err<E> {
 
 export type Result<T, E> = Success<T> | Err<E>
 
-export function ok<T, E = never>(value: T): Result<T, E> {
+export function success<T, E = never>(value: T): Result<T, E> {
     return new Success(value)
 }
 
-export function err<T = never, E = Error>(error: E): Result<T, E> {
+export function error<T = never, E = Error>(error: E): Result<T, E> {
     return new Err(error)
 }
