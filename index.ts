@@ -3,10 +3,7 @@ import { toMetadata } from "./metadata"
 
 let obj = { 
     id: 15, 
-    number: 1244,
-    numbers: [1, 2], 
-    // numbers: [{ value: "test" }], 
-    // phone: { number: 1, country: "ru" } 
+    order: 1244
 }
 
 let value = JSON.stringify(obj)

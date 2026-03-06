@@ -1,13 +1,13 @@
 import { createCache } from "./cache"
-import { toMetadata, Metadata, TypeName } from "./metadata"
-import { Result, success } from "./result"
+import { toMetadata, Metadata, TypeName, MetadataField } from "./metadata"
+import { error, Result, success } from "./result"
 
 const TAB = () => 9 //\t
 const NEW_LINE = () => 10 //\n
 const LINE_END = () => 13 //\r
 const SPACE = () => 32
 const QUOTE = () => 34 //"
-const COMMA = () => 44
+const COMMA = () => 44 //,
 const SEPARATOR = () => 58 //:
 const OPEN = () => 123 //{
 const CLOSE = () => 125 //}
@@ -39,90 +39,87 @@ function parseArray(
 }
 
 function parseObject(
-    bytes: Uint8Array<ArrayBuffer>, metadata: Metadata, encoder: TextEncoder,
-    start: number) {
-    let i = start
+    bytes: Uint8Array<ArrayBuffer>, metadata: Metadata, index: number, options: JsonOptions): Result<[unknown, number], string> {
 
-    if (bytes[i] !== OPEN())
-        return ["fail parseObject", -1]
+    if (bytes[index] !== OPEN())
+        return error("fail parseObject")
+    index++
 
-    i++
+    function* getFields(fields: MetadataField[]): Iterable<readonly [PropertyKey, any]> {
+        for (let i = 0; i < fields.length; i++) {
+            const field = fields[i]
 
-    i = skipWhitespace(bytes, i)
+            index = skipWhitespace(bytes, index)
 
-    metadata.fields.forEach((field) => {
-        i = skipWhitespace(bytes, i)
+            console.log(index)
 
-        if (bytes[i] !== QUOTE()) {
-            throw new Error("not start of field")
-        }
-        i++
+            if (bytes[index] !== QUOTE())
+                throw new Error(`not start of property`)
+            index++
 
-        let fieldName = encoder.encode(field.name)
+            const fieldName = options.encoder.encode(field.name)
+            let j = 0
+            while (j < fieldName.length) {
+                if (bytes[index] !== fieldName[j])
+                    throw new Error(`not correct property`)
 
-        const fieldEndPosition = i + fieldName.length
-
-        let j = 0
-        while (i < fieldEndPosition) {
-            if (bytes[i] !== fieldName[j]) {
-                throw new Error(`wrong field with separator '${i} ${j}'`)
+                index++
+                j++
             }
+            index++
 
-            i++
-            j++
+            if (bytes[index] !== SEPARATOR())
+                throw new Error(`not end of property`)
+            index++
+
+            index = skipWhitespace(bytes, index)
+
+            const parseResult = parseValue(bytes, field ?? field.value, index, options)
+            const resultValue = parseResult.getOrElse(null)
+
+            index = resultValue[1]
+
+            yield [field.name, resultValue[0]]
         }
+    }
 
-        i++
+    const fields = getFields(metadata.fields)
+    const result = Object.fromEntries(fields)
 
-        if (bytes[i] !== SEPARATOR()) {
-            throw new Error(`wrong field with separator '${field.name}'`)
-        }
+    if (bytes[index] !== CLOSE())
+        return error("fail parseObject")
 
-        i = skipWhitespace(bytes, ++i)
+    index = skipWhitespace(bytes, index)
 
-        const result = parseValue(bytes, field.value, i, null)
-
-        // output[field.name] = value
-        // i = index
-    })
-
-    i = skipWhitespace(bytes, i)
-
-    if (bytes[i] !== CLOSE())
-        return ["fail parseObject 2", -1]
-
-    // return [output, i]
-}
-
-function* gen1(): Iterable<readonly [PropertyKey, any]> {
-    yield ["field1", 1]
-    yield ["field2", 2]
+    return success([result, index])
 }
 
 export function parseValue(
-    bytes: Uint8Array<ArrayBuffer>, metadata: Metadata, start: number, options: JsonOptions): Result<unknown, string> {
+    bytes: Uint8Array<ArrayBuffer>, metadata: Metadata | MetadataField, index: number, options: JsonOptions):
+    Result<[unknown, number], string> {
 
-    let i = skipWhitespace(bytes, start)
+    let converter = options.converters.get(metadata.type)
+    if (!converter)
+        return error(`Converter not found for type ${metadata.type}`)
 
-    switch (metadata.type) {
-        case "number":
-            let j = i
-            while (bytes[j] !== CLOSE() && bytes[j] !== COMMA()) {
-                j++
-            }
-            const str = new TextDecoder().decode(bytes.slice(i, j))
-            return success(Number(str))
-        case "array":
-        // return parseArray(bytes, metadata, new TextEncoder(), i)
-        case "object":
-        // return parseObject(bytes, metadata, new TextEncoder(), i)
-        default:
-            return null
+    index = skipWhitespace(bytes, index)
+
+    return converter(bytes, metadata, index, options)
+}
+
+let parseNubmer: Converter = (bytes, metadata, index, options) => {
+    let j = index
+    while (bytes[j] !== CLOSE() && bytes[j] !== COMMA()) {
+        j++
     }
+    const str = new TextDecoder().decode(bytes.slice(index, j))
+    const indexAfterValue = bytes[j] === COMMA() ? j + 1 : j
+    return success([Number(str), indexAfterValue])
 }
 
 export type Converter =
-    (bytes: Uint8Array<ArrayBuffer>, metadata: Metadata, index: number, options: JsonOptions) => unknown
+    (bytes: Uint8Array<ArrayBuffer>, metadata: Metadata | MetadataField, index: number, options: JsonOptions) =>
+        Result<[unknown, number], string>
 
 export type JsonOptions = {
     encoder?: TextEncoder
@@ -138,7 +135,8 @@ const metadataCache = createCache<unknown, Metadata>()
 const defaultOptions: JsonOptions = Object.freeze({
     encoder: new TextEncoder(),
     converters: new Map<TypeName, Converter>([
-        ["number", null]
+        ["number", parseNubmer],
+        ["object", parseObject]
     ]),
     maxDepth: 64,
     allowTrailingCommas: false,
@@ -150,11 +148,11 @@ export function deserialize<T>(json: string, object: T, options?: JsonOptions): 
     const jsonOptions: JsonOptions = {
         ...defaultOptions,
         ...Object.fromEntries(
-            Object.entries(options).filter(([_, value]) => Boolean(value))
+            Object.entries(options ?? {}).filter(([_, value]) => Boolean(value))
         ),
         converters: new Map<TypeName, Converter>([
             ...defaultOptions.converters,
-            ...options.converters
+            ...(options?.converters ?? [])
         ])
     }
 
@@ -162,7 +160,8 @@ export function deserialize<T>(json: string, object: T, options?: JsonOptions): 
 
     const metadata = metadataCache.getOrAdd(object, (obj) => toMetadata(obj))
 
-    let result = parseValue(bytes, metadata, 0, jsonOptions)
+    console.log(bytes, metadata)
 
-    return result.getOrElse(null) as T
+    let result = parseValue(bytes, metadata, 0, jsonOptions)
+    return result.getOrElse(undefined)[0] as T
 }
