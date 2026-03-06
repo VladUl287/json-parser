@@ -133,7 +133,7 @@ export type JsonOptions = {
     allowTrailingCommas?: boolean,
     fieldCaseInsensitive?: boolean
     allowDuplicateProperties?: boolean
-    commentHandling: string
+    commentHandling?: string
 }
 
 const metadataCache = createCache<unknown, Metadata>()
