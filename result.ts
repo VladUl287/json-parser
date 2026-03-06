@@ -6,9 +6,8 @@ class Success<T> {
         return new Success(fn(this.value))
     }
 
-    onSuccess(fn: (value: T) => void): this {
-        fn(this.value)
-        return this
+    getOrElse(defaultValue: T): T {
+        return this.value
     }
 }
 
@@ -20,9 +19,8 @@ class Err<E> {
         return this as any
     }
 
-    onErr(fn: (error: E) => void): this {
-        fn(this.error)
-        return this
+    getOrElse<U>(defaultValue: U): U {
+        return defaultValue
     }
 }
 

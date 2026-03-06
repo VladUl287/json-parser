@@ -1,5 +1,6 @@
 import { createCache } from "./cache"
 import { toMetadata, Metadata, TypeName } from "./metadata"
+import { Result, success } from "./result"
 
 const TAB = () => 9 //\t
 const NEW_LINE = () => 10 //\n
@@ -79,7 +80,7 @@ function parseObject(
 
         i = skipWhitespace(bytes, ++i)
 
-        const [value, index] = parseValue(field.type, bytes, field.value, i)
+        const result = parseValue(field.type, bytes, field.value, i)
 
         // output[field.name] = value
         // i = index
@@ -99,10 +100,7 @@ function* gen1(): Iterable<readonly [PropertyKey, any]> {
 }
 
 export function parseValue(
-    type: TypeName, bytes: Uint8Array<ArrayBuffer>, metadata: Metadata, start: number) {
-
-    let a = gen1()
-    Object.fromEntries(a)
+    type: TypeName, bytes: Uint8Array<ArrayBuffer>, metadata: Metadata, start: number): Result<unknown, string> {
 
     let i = skipWhitespace(bytes, start)
 
@@ -113,11 +111,11 @@ export function parseValue(
                 j++
             }
             const str = new TextDecoder().decode(bytes.slice(i, j))
-            return [Number(str), j + 1]
+            return success(Number(str))
         case "array":
-            return parseArray(bytes, metadata, new TextEncoder(), i)
+        // return parseArray(bytes, metadata, new TextEncoder(), i)
         case "object":
-            return parseObject(bytes, metadata, new TextEncoder(), i)
+        // return parseObject(bytes, metadata, new TextEncoder(), i)
         default:
             return null
     }
@@ -146,7 +144,7 @@ export function deserialize<T>(json: string, object: T, options?: JsonOptions): 
 
     const metadata = metadataCache.getOrAdd(object, (obj) => toMetadata(obj))
 
-    const [value, _] = parseValue(metadata.type, bytes, metadata, 0)
+    let result = parseValue(metadata.type, bytes, metadata, 0)
 
-    return value as T
+    return result.getOrElse(null) as T
 }
