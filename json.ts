@@ -80,7 +80,7 @@ function parseObject(
 
         i = skipWhitespace(bytes, ++i)
 
-        const result = parseValue(field.type, bytes, field.value, i)
+        const result = parseValue(bytes, field.value, i, null)
 
         // output[field.name] = value
         // i = index
@@ -100,11 +100,11 @@ function* gen1(): Iterable<readonly [PropertyKey, any]> {
 }
 
 export function parseValue(
-    type: TypeName, bytes: Uint8Array<ArrayBuffer>, metadata: Metadata, start: number): Result<unknown, string> {
+    bytes: Uint8Array<ArrayBuffer>, metadata: Metadata, start: number, options: JsonOptions): Result<unknown, string> {
 
     let i = skipWhitespace(bytes, start)
 
-    switch (type) {
+    switch (metadata.type) {
         case "number":
             let j = i
             while (bytes[j] !== CLOSE() && bytes[j] !== COMMA()) {
@@ -121,30 +121,48 @@ export function parseValue(
     }
 }
 
-export type Converter = {
-    type: TypeName
-    convert: (bytes: Uint8Array<ArrayBuffer>, metadata: Metadata, index: number, options: JsonOptions) => unknown
-}
+export type Converter =
+    (bytes: Uint8Array<ArrayBuffer>, metadata: Metadata, index: number, options: JsonOptions) => unknown
 
 export type JsonOptions = {
     encoder?: TextEncoder
-    converters?: Converter[]
+    converters?: Map<TypeName, Converter>
     maxDepth?: number
     allowTrailingCommas?: boolean,
     fieldCaseInsensitive?: boolean
     allowDuplicateProperties?: boolean
-    commentHandling?: string
 }
 
 const metadataCache = createCache<unknown, Metadata>()
 
+const defaultOptions: JsonOptions = Object.freeze({
+    encoder: new TextEncoder(),
+    converters: new Map<TypeName, Converter>([
+        ["number", null]
+    ]),
+    maxDepth: 64,
+    allowTrailingCommas: false,
+    fieldCaseInsensitive: false,
+    allowDuplicateProperties: false
+})
+
 export function deserialize<T>(json: string, object: T, options?: JsonOptions): T {
-    const encoder = options?.encoder ?? new TextEncoder()
-    const bytes = encoder.encode(json)
+    const jsonOptions: JsonOptions = {
+        ...defaultOptions,
+        ...Object.fromEntries(
+            Object.entries(options).filter(([_, value]) => Boolean(value))
+        ),
+        converters: new Map<TypeName, Converter>([
+            ...defaultOptions.converters,
+            ...options.converters
+        ])
+    }
+
+    const bytes = jsonOptions.encoder.encode(json)
 
     const metadata = metadataCache.getOrAdd(object, (obj) => toMetadata(obj))
 
-    let result = parseValue(metadata.type, bytes, metadata, 0)
+    let result = parseValue(bytes, metadata, 0, jsonOptions)
 
     return result.getOrElse(null) as T
 }
