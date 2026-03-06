@@ -57,147 +57,102 @@ export function toMetadata<T>(object: T): Metadata | undefined {
     }
 }
 
-export function toObject(metadata: Metadata): object {
-    return Object.fromEntries(
-        metadata.fields.map(field => {
-            let defaultValue: any;
+// export function parseUTF8BytesToNumber(uint8Array: Uint8Array, start: number, end: number): number {
+//     let i = start
+//     let result = 0
+//     let isNegative = false
+//     let isFloat = false
+//     let hasExponent = false
+//     let exponentIsNegative = false
+//     let decimalPlaces = 0
 
-            switch (field.type) {
-                case 'string':
-                    defaultValue = ''
-                    break
-                case 'number':
-                    defaultValue = 0
-                    break
-                case 'boolean':
-                    defaultValue = false
-                    break
-                case 'array':
-                    defaultValue = field.value
-                        ? field.value.fields.map(() => toObject(field.value))
-                        : []
-                    break
-                case 'object':
-                    defaultValue = field.value
-                        ? toObject(field.value)
-                        : {}
-                    break
-                case 'undefined':
-                    defaultValue = undefined
-                    break
-                case 'date':
-                    defaultValue = new Date()
-                    break
-                default:
-                    defaultValue = null
-            }
+//     const PLUS = () => 43
+//     const MINUS = () => 45
+//     const DOT = () => 46
+//     const EXPONENT = () => 69
+//     const EXPONENT_LOWER = () => 101
 
-            if (field.nullable) defaultValue = null
-            if (field.optional && field.type !== 'array' && field.type !== 'object') {
-                defaultValue = undefined
-            }
+//     if (uint8Array[i] === MINUS()) {
+//         isNegative = true
+//         i++
+//     }
+//     else if (uint8Array[i] === PLUS()) {
+//         i++
+//     }
 
-            return [field.name, defaultValue]
-        })
-    )
-}
+//     while (i < end) {
+//         const byte = uint8Array[i]
 
-export function parseUTF8BytesToNumber(uint8Array: Uint8Array, start: number, end: number): number {
-    let i = start
-    let result = 0
-    let isNegative = false
-    let isFloat = false
-    let hasExponent = false
-    let exponentIsNegative = false
-    let decimalPlaces = 0
+//         if (byte === DOT()) {
+//             if (isFloat)
+//                 throw new Error('Multiple decimal points')
 
-    const PLUS = () => 43
-    const MINUS = () => 45
-    const DOT = () => 46
-    const EXPONENT = () => 69
-    const EXPONENT_LOWER = () => 101
+//             isFloat = true
+//             i++
+//             continue
+//         }
 
-    if (uint8Array[i] === MINUS()) {
-        isNegative = true
-        i++
-    }
-    else if (uint8Array[i] === PLUS()) {
-        i++
-    }
+//         if (byte === EXPONENT() || byte === EXPONENT_LOWER()) {
+//             if (hasExponent)
+//                 throw new Error('Multiple exponents')
 
-    while (i < end) {
-        const byte = uint8Array[i]
+//             hasExponent = true
+//             i++
 
-        if (byte === DOT()) {
-            if (isFloat)
-                throw new Error('Multiple decimal points')
+//             if (i < end) {
+//                 if (uint8Array[i] === MINUS()) {
+//                     exponentIsNegative = true
+//                     i++
+//                 }
+//                 else if (uint8Array[i] === PLUS()) {
+//                     i++
+//                 }
+//             }
 
-            isFloat = true
-            i++
-            continue
-        }
+//             break
+//         }
 
-        if (byte === EXPONENT() || byte === EXPONENT_LOWER()) {
-            if (hasExponent)
-                throw new Error('Multiple exponents')
+//         if (byte < 48 || byte > 57) { // ASCII '0' to '9' are 48-57
+//             throw new Error('Non-digit character found')
+//         }
 
-            hasExponent = true
-            i++
+//         const digit = byte - 48
+//         result = result * 10 + digit
 
-            if (i < end) {
-                if (uint8Array[i] === MINUS()) {
-                    exponentIsNegative = true
-                    i++
-                }
-                else if (uint8Array[i] === PLUS()) {
-                    i++
-                }
-            }
+//         if (isFloat) {
+//             decimalPlaces++
+//         }
 
-            break
-        }
+//         i++
+//     }
 
-        if (byte < 48 || byte > 57) { // ASCII '0' to '9' are 48-57
-            throw new Error('Non-digit character found')
-        }
+//     let exponent = 0
+//     if (hasExponent) {
+//         while (i < end) {
+//             const byte = uint8Array[i]
 
-        const digit = byte - 48
-        result = result * 10 + digit
+//             if (byte < 48 || byte > 57) {
+//                 throw new Error(`Non-digit in exponent: ${String.fromCharCode(byte)}`)
+//             }
 
-        if (isFloat) {
-            decimalPlaces++
-        }
+//             exponent = exponent * 10 + (byte - 48)
+//             i++
+//         }
 
-        i++
-    }
+//         if (exponentIsNegative) {
+//             exponent = -exponent;
+//         }
 
-    let exponent = 0
-    if (hasExponent) {
-        while (i < end) {
-            const byte = uint8Array[i]
+//         result = result * Math.pow(10, exponent)
+//     }
 
-            if (byte < 48 || byte > 57) {
-                throw new Error(`Non-digit in exponent: ${String.fromCharCode(byte)}`)
-            }
+//     if (isFloat && decimalPlaces > 0) {
+//         result = result / Math.pow(10, decimalPlaces)
+//     }
 
-            exponent = exponent * 10 + (byte - 48)
-            i++
-        }
+//     if (isNegative) {
+//         result = -result
+//     }
 
-        if (exponentIsNegative) {
-            exponent = -exponent;
-        }
-
-        result = result * Math.pow(10, exponent)
-    }
-
-    if (isFloat && decimalPlaces > 0) {
-        result = result / Math.pow(10, decimalPlaces)
-    }
-
-    if (isNegative) {
-        result = -result
-    }
-
-    return result
-}
+//     return result
+// }

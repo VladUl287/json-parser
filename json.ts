@@ -1,5 +1,5 @@
 import { createCache } from "./cache"
-import { toMetadata, toObject, Metadata, TypeName } from "./metadata"
+import { toMetadata, Metadata, TypeName } from "./metadata"
 
 const TAB = () => 9 //\t
 const NEW_LINE = () => 10 //\n
@@ -22,27 +22,24 @@ function skipWhitespace(bytes: Uint8Array<ArrayBuffer>, i: number): number {
 }
 
 function parseArray(
-    bytes: Uint8Array<ArrayBuffer>, metadata: Metadata, output: object, encoder: TextEncoder,
-    start: number): [unknown, number] {
+    bytes: Uint8Array<ArrayBuffer>, metadata: Metadata, encoder: TextEncoder,
+    start: number) {
     let i = start
 
     if (bytes[i] !== BRANCE_OPEN())
-        return ["fail parseArray", -1]
+        return "fail parseArray"
 
     i = skipWhitespace(bytes, i)
-
 
     while (bytes[i] !== BRANCE_CLOSE()) {
 
         i++
     }
-
-    return [output, i + 1]
 }
 
 function parseObject(
-    bytes: Uint8Array<ArrayBuffer>, metadata: Metadata, output: object, encoder: TextEncoder,
-    start: number): [unknown, number] {
+    bytes: Uint8Array<ArrayBuffer>, metadata: Metadata, encoder: TextEncoder,
+    start: number) {
     let i = start
 
     if (bytes[i] !== OPEN())
@@ -82,10 +79,10 @@ function parseObject(
 
         i = skipWhitespace(bytes, ++i)
 
-        const [value, index] = parseValue(field.type, bytes, field.value, output[field.name], i)
+        const [value, index] = parseValue(field.type, bytes, field.value, i)
 
-        output[field.name] = value
-        i = index
+        // output[field.name] = value
+        // i = index
     })
 
     i = skipWhitespace(bytes, i)
@@ -93,7 +90,7 @@ function parseObject(
     if (bytes[i] !== CLOSE())
         return ["fail parseObject 2", -1]
 
-    return [output, i]
+    // return [output, i]
 }
 
 function* gen1(): Iterable<readonly [PropertyKey, any]> {
@@ -102,7 +99,7 @@ function* gen1(): Iterable<readonly [PropertyKey, any]> {
 }
 
 export function parseValue(
-    type: TypeName, bytes: Uint8Array<ArrayBuffer>, metadata: Metadata, output: object, start: number): [unknown, number] {
+    type: TypeName, bytes: Uint8Array<ArrayBuffer>, metadata: Metadata, start: number) {
 
     let a = gen1()
     Object.fromEntries(a)
@@ -118,9 +115,9 @@ export function parseValue(
             const str = new TextDecoder().decode(bytes.slice(i, j))
             return [Number(str), j + 1]
         case "array":
-            return parseArray(bytes, metadata, output, new TextEncoder(), i)
+            return parseArray(bytes, metadata, new TextEncoder(), i)
         case "object":
-            return parseObject(bytes, metadata, output, new TextEncoder(), i)
+            return parseObject(bytes, metadata, new TextEncoder(), i)
         default:
             return null
     }
@@ -144,7 +141,7 @@ export function deserialize<T>(json: string, object: T, options?: JsonOptions): 
 
     const metadata = metadataCache.getOrAdd(object, () => toMetadata(object))
 
-    const [value, _] = parseValue(metadata.type, bytes, metadata, toObject(metadata), 0)
+    const [value, _] = parseValue(metadata.type, bytes, metadata, 0)
 
     return value as T
 }
