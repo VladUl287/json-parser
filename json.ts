@@ -22,27 +22,14 @@ function skipWhitespace(bytes: Uint8Array<ArrayBuffer>, i: number): number {
     return i
 }
 
-function parseArray(
-    bytes: Uint8Array<ArrayBuffer>, metadata: Metadata, encoder: TextEncoder,
-    start: number) {
-    let i = start
+function parseObject(ctx: ParseContext): Result<[unknown, number], string> {
 
-    if (bytes[i] !== BRANCE_OPEN())
-        return "fail parseArray"
+    let { bytes, index, options, metadata } = ctx
 
-    i = skipWhitespace(bytes, i)
-
-    while (bytes[i] !== BRANCE_CLOSE()) {
-
-        i++
-    }
-}
-
-function parseObject(
-    bytes: Uint8Array<ArrayBuffer>, metadata: Metadata, index: number, options: JsonOptions): Result<[unknown, number], string> {
+    index = skipWhitespace(bytes, index)
 
     if (bytes[index] !== OPEN())
-        return error("fail parseObject")
+        return error("fail parseObject open not found")
     index++
 
     function* getFields(fields: MetadataField[]): Iterable<readonly [PropertyKey, any]> {
@@ -74,7 +61,9 @@ function parseObject(
 
             index = skipWhitespace(bytes, index)
 
-            const parseResult = parseValue(bytes, field ?? field.value, index, options)
+            const parseResult = parseValue({ ...ctx, index })
+            console.log('parseResult:', parseResult)
+
             const resultValue = parseResult.getOrElse(null)
 
             index = resultValue[1]
@@ -83,43 +72,57 @@ function parseObject(
         }
     }
 
-    const fields = getFields(metadata.fields)
+    const fields = getFields((metadata as Metadata).fields)
     const result = Object.fromEntries(fields)
 
     if (bytes[index] !== CLOSE())
-        return error("fail parseObject")
+        return error("fail parseObject close not found")
 
     index = skipWhitespace(bytes, index)
 
     return success([result, index])
 }
 
-export function parseValue(
-    bytes: Uint8Array<ArrayBuffer>, metadata: Metadata | MetadataField, index: number, options: JsonOptions):
-    Result<[unknown, number], string> {
+type ParseContext = {
+    bytes: Uint8Array<ArrayBuffer>
+    metadata: Metadata | MetadataField
+    options: JsonOptions
+    index: number
+    depth: number
+}
 
-    let converter = options.converters.get(metadata.type)
+export function parseValue(ctx: ParseContext): Result<[unknown, number], string> {
+    const { metadata, options, depth } = ctx
+
+    if (depth > options.maxDepth)
+        return error(`Max depth hit ${options.maxDepth}`)
+
+    const converter = options.converters.get(metadata.type)
+
     if (!converter)
         return error(`Converter not found for type ${metadata.type}`)
 
-    index = skipWhitespace(bytes, index)
-
-    return converter(bytes, metadata, index, options)
+    return converter({
+        ...ctx,
+        depth: depth + 1
+    })
 }
 
-let parseNubmer: Converter = (bytes, metadata, index, options) => {
+let parseNubmer: Converter = ({ bytes, metadata, index, options }) => {
+    index = skipWhitespace(bytes, index)
+
     let j = index
     while (bytes[j] !== CLOSE() && bytes[j] !== COMMA()) {
         j++
     }
+
     const str = new TextDecoder().decode(bytes.slice(index, j))
     const indexAfterValue = bytes[j] === COMMA() ? j + 1 : j
+
     return success([Number(str), indexAfterValue])
 }
 
-export type Converter =
-    (bytes: Uint8Array<ArrayBuffer>, metadata: Metadata | MetadataField, index: number, options: JsonOptions) =>
-        Result<[unknown, number], string>
+export type Converter = (ctx: ParseContext) => Result<[unknown, number], string>
 
 export type JsonOptions = {
     encoder?: TextEncoder
@@ -160,8 +163,14 @@ export function deserialize<T>(json: string, object: T, options?: JsonOptions): 
 
     const metadata = metadataCache.getOrAdd(object, (obj) => toMetadata(obj))
 
-    console.log(bytes, metadata)
+    console.log(bytes, metadata, jsonOptions)
 
-    let result = parseValue(bytes, metadata, 0, jsonOptions)
+    let result = parseValue({
+        bytes,
+        metadata: metadata,
+        options: jsonOptions,
+        index: 0,
+        depth: 0
+    })
     return result.getOrElse(undefined)[0] as T
 }
