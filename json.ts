@@ -1,5 +1,5 @@
 import { createCache } from "./cache"
-import { toMetadata, Metadata, TypeName } from "./metadata"
+import { toMetadata, Metadata, TypeName, MetadataField } from "./metadata"
 import { error, Result, success } from "./result"
 
 const TAB = () => 9 //\t
@@ -32,7 +32,7 @@ function parseObject(ctx: ParseContext): Result<[unknown, number], string> {
         return error("fail parseObject open not found")
     index++
 
-    function* getFields(fields: Metadata[]): Iterable<readonly [PropertyKey, any]> {
+    function* getFields(fields: MetadataField[]): Iterable<readonly [PropertyKey, any]> {
         for (let i = 0; i < fields.length; i++) {
             const field = fields[i]
 
@@ -72,7 +72,7 @@ function parseObject(ctx: ParseContext): Result<[unknown, number], string> {
         }
     }
 
-    const fields = getFields(metadata.fields)
+    const fields = getFields((metadata as Metadata).fields)
     const result = Object.fromEntries(fields)
 
     if (bytes[index] !== CLOSE())
@@ -85,7 +85,7 @@ function parseObject(ctx: ParseContext): Result<[unknown, number], string> {
 
 type ParseContext = {
     bytes: Uint8Array<ArrayBuffer>
-    metadata: Metadata
+    metadata: Metadata | MetadataField
     options: JsonOptions
     index: number
     depth: number
