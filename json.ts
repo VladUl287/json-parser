@@ -165,6 +165,8 @@ export function deserialize<T>(json: string, object: T, options?: JsonOptions): 
 
     console.log(JSON.stringify(metadata, null, 2))
 
+    return null as T
+
     let result = parseValue({
         bytes,
         metadata: metadata,
