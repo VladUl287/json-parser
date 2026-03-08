@@ -3,7 +3,8 @@ import { toMetadata } from "./metadata"
 
 let obj = { 
     id: 15, 
-    order: 1244
+    order: 1244,
+    points: [{ id: 1 }]
 }
 
 let value = JSON.stringify(obj)

@@ -11,19 +11,19 @@ export type TypeName =
     | "date"
 
 export type MetadataField = {
-    name: string,
-    type: TypeName
-    value?: Metadata
-    optional?: boolean
-    nullable?: boolean
-    description?: string
-    defaultValue?: unknown
+    readonly name: string,
+    readonly type: TypeName
+    readonly value?: Metadata
+    readonly optional?: boolean
+    readonly nullable?: boolean
+    readonly description?: string
+    readonly defaultValue?: unknown
 }
 
 export type Metadata = {
-    object: unknown
-    type: TypeName
-    fields: MetadataField[]
+    readonly object: unknown
+    readonly type: TypeName
+    readonly fields?: MetadataField[]
 }
 
 function getType(value: unknown): TypeName {
@@ -41,7 +41,16 @@ export function toMetadata<T>(object: T): Metadata | undefined {
         return
 
     if (Array.isArray(object))
-        return toMetadata(object[0])
+        return {
+            object: object,
+            type: object.length > 0 ? getType(object[0]) : 'undefined',
+            fields: object.length > 0 ? Object.keys(object[0])
+                .map((key): MetadataField => ({
+                    name: key,
+                    type: getType(object[0][key as keyof T]),
+                    value: toMetadata(object[0][key as keyof T])
+                })) : []
+        }
 
     return {
         object: object,

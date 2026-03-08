@@ -163,7 +163,7 @@ export function deserialize<T>(json: string, object: T, options?: JsonOptions): 
 
     const metadata = metadataCache.getOrAdd(object, (obj) => toMetadata(obj))
 
-    console.log(bytes, metadata, jsonOptions)
+    console.log(JSON.stringify(metadata, null, 2))
 
     let result = parseValue({
         bytes,
