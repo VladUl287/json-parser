@@ -63,8 +63,6 @@ function parseObject(ctx: ParseContext): Result<[unknown, number], string> {
                 metadata: field,
                 index
             })
-            console.log('parseResult:', parseResult)
-
             const resultValue = parseResult.getOrElse(null)
 
             index = resultValue[1]
