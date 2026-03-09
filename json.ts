@@ -1,5 +1,6 @@
 import { createCache } from "./cache"
 import { JsonCodes } from "./jsonConstants"
+import { Converter, JsonOptions, DeserializeContext } from "./jsonTypes"
 import { toMetadata, Metadata, TypeName } from "./metadata"
 import { error, Result, success } from "./result"
 
@@ -13,7 +14,7 @@ function skipWhitespace(bytes: Uint8Array<ArrayBuffer>, i: number): number {
     return i
 }
 
-function parseObject(ctx: ParseContext): Result<[unknown, number], string> {
+function parseObject(ctx: DeserializeContext): Result<[unknown, number], string> {
     let { bytes, index, options, metadata } = ctx
 
     index = skipWhitespace(bytes, index)
@@ -73,15 +74,7 @@ function parseObject(ctx: ParseContext): Result<[unknown, number], string> {
     return success([result, index])
 }
 
-type ParseContext = {
-    bytes: Uint8Array<ArrayBuffer>
-    metadata: Metadata | Metadata[]
-    options: JsonOptions
-    index: number
-    depth: number
-}
-
-export function parseValue(ctx: ParseContext): Result<[unknown, number], string> {
+export function parseValue(ctx: DeserializeContext): Result<[unknown, number], string> {
     const { metadata, options, depth } = ctx
 
     if (depth > options.maxDepth)
@@ -112,7 +105,7 @@ let parseNubmer: Converter = ({ bytes, metadata, index, options }) => {
     return success([Number(str), indexAfterValue])
 }
 
-function parseString({ bytes, index, options, metadata }: ParseContext): Result<[unknown, number], string> {
+function parseString({ bytes, index, options, metadata }: DeserializeContext): Result<[unknown, number], string> {
     index = skipWhitespace(bytes, index)
 
     if (bytes[index] !== JsonCodes.DOUBLE_QUOTE)
@@ -130,17 +123,6 @@ function parseString({ bytes, index, options, metadata }: ParseContext): Result<
 
     const indexAfterValue = bytes[index] === JsonCodes.COMMA ? index + 1 : index
     return success([result, indexAfterValue])
-}
-
-export type Converter = (ctx: ParseContext) => Result<[unknown, number], string>
-
-export type JsonOptions = {
-    encoder?: TextEncoder
-    converters?: Map<TypeName, Converter>
-    maxDepth?: number
-    allowTrailingCommas?: boolean,
-    fieldCaseInsensitive?: boolean
-    allowDuplicateProperties?: boolean
 }
 
 const metadataCache = createCache<unknown, Metadata>()
