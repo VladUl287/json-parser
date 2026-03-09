@@ -5,21 +5,23 @@ let obj = {
     id: 15,
     order: 1244,
     phone: {
-        country: "ru",
+        // country: "ru",
         code: 7
     },
-    points: [1, 2],
+    // points: [1, 2],
     // points: [{ id: 1, names: ["test", "test1"] }],
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    // createdAt: new Date(),
+    // updatedAt: new Date(),
 }
 
 const metadata = toMetadata(obj)
 
-console.log(JSON.stringify(metadata, null, 2))
+console.log(JSON.stringify(metadata, null, 4), '\n\n')
 
-// let value = JSON.stringify(obj)
+const value = JSON.stringify(obj, null, 4)
 
-// let deserialized = deserialize(value, obj)
+console.log(value, '\n\n')
 
-// console.log(deserialized)
+const deserialized = deserialize(value, obj)
+
+console.log(deserialized)

@@ -1,5 +1,5 @@
 import { createCache } from "./cache"
-import { toMetadata, Metadata, TypeName, MetadataField } from "./metadata"
+import { toMetadata, Metadata, TypeName } from "./metadata"
 import { error, Result, success } from "./result"
 
 const TAB = () => 9 //\t
@@ -17,38 +17,35 @@ const BRANCE_CLOSE = () => 93 //]
 function skipWhitespace(bytes: Uint8Array<ArrayBuffer>, i: number): number {
     let byte = bytes[i]
     while (byte === SPACE() || byte === TAB() || byte === NEW_LINE() || byte === LINE_END()) {
-        byte = bytes[i++]
+        byte = bytes[++i]
     }
     return i
 }
 
 function parseObject(ctx: ParseContext): Result<[unknown, number], string> {
-
     let { bytes, index, options, metadata } = ctx
 
     index = skipWhitespace(bytes, index)
 
     if (bytes[index] !== OPEN())
-        return error("fail parseObject open not found")
+        return error(`fail parseObject open not found ${index}  ${ctx.depth}`)
     index++
 
-    function* getFields(fields: MetadataField[]): Iterable<readonly [PropertyKey, any]> {
+    function* getFields(fields: Metadata[]): Iterable<readonly [PropertyKey, any]> {
         for (let i = 0; i < fields.length; i++) {
             const field = fields[i]
 
             index = skipWhitespace(bytes, index)
 
-            console.log(index)
-
             if (bytes[index] !== QUOTE())
-                throw new Error(`not start of property`)
+                throw new Error(`not start of property ${index}`)
             index++
 
             const fieldName = options.encoder.encode(field.name)
             let j = 0
             while (j < fieldName.length) {
                 if (bytes[index] !== fieldName[j])
-                    throw new Error(`not correct property`)
+                    throw new Error(`not correct property ${field.name}`)
 
                 index++
                 j++
@@ -61,7 +58,11 @@ function parseObject(ctx: ParseContext): Result<[unknown, number], string> {
 
             index = skipWhitespace(bytes, index)
 
-            const parseResult = parseValue({ ...ctx, index })
+            const parseResult = parseValue({
+                ...ctx,
+                metadata: field,
+                index
+            })
             console.log('parseResult:', parseResult)
 
             const resultValue = parseResult.getOrElse(null)
@@ -72,7 +73,7 @@ function parseObject(ctx: ParseContext): Result<[unknown, number], string> {
         }
     }
 
-    const fields = getFields((metadata as Metadata).fields)
+    const fields = getFields((metadata as Metadata).value as Metadata[])
     const result = Object.fromEntries(fields)
 
     if (bytes[index] !== CLOSE())
@@ -85,7 +86,7 @@ function parseObject(ctx: ParseContext): Result<[unknown, number], string> {
 
 type ParseContext = {
     bytes: Uint8Array<ArrayBuffer>
-    metadata: Metadata | MetadataField
+    metadata: Metadata | Metadata[]
     options: JsonOptions
     index: number
     depth: number
@@ -97,10 +98,10 @@ export function parseValue(ctx: ParseContext): Result<[unknown, number], string>
     if (depth > options.maxDepth)
         return error(`Max depth hit ${options.maxDepth}`)
 
-    const converter = options.converters.get(metadata.type)
+    const converter = options.converters.get((metadata as Metadata).type)
 
     if (!converter)
-        return error(`Converter not found for type ${metadata.type}`)
+        return error(`Converter not found for type ${(metadata as Metadata).type}`)
 
     return converter({
         ...ctx,
@@ -159,11 +160,13 @@ export function deserialize<T>(json: string, object: T, options?: JsonOptions): 
         ])
     }
 
-    const bytes = jsonOptions.encoder.encode(json)
-
     const metadata = metadataCache.getOrAdd(object, (obj) => toMetadata(obj))
 
-    let result = parseValue({
+    const bytes = jsonOptions.encoder.encode(json)
+
+    console.log(bytes, '\n\n')
+
+    const result = parseValue({
         bytes,
         metadata: metadata,
         options: jsonOptions,
