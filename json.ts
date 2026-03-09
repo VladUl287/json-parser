@@ -121,6 +121,26 @@ let parseNubmer: Converter = ({ bytes, metadata, index, options }) => {
     return success([Number(str), indexAfterValue])
 }
 
+function parseString({ bytes, index, options, metadata }: ParseContext): Result<[unknown, number], string> {
+    index = skipWhitespace(bytes, index)
+
+    if (bytes[index] !== QUOTE())
+        return error("not quote")
+    index++
+
+    let start = index
+    while (bytes[index] !== QUOTE()) {
+        index++
+    }
+
+    const decoder = new TextDecoder()
+    const result = decoder.decode(bytes.slice(start, index))
+    index++
+
+    const indexAfterValue = bytes[index] === COMMA() ? index + 1 : index
+    return success([result, indexAfterValue])
+}
+
 export type Converter = (ctx: ParseContext) => Result<[unknown, number], string>
 
 export type JsonOptions = {
@@ -138,6 +158,7 @@ const defaultOptions: JsonOptions = Object.freeze({
     encoder: new TextEncoder(),
     converters: new Map<TypeName, Converter>([
         ["number", parseNubmer],
+        ["string", parseString],
         ["object", parseObject]
     ]),
     maxDepth: 64,

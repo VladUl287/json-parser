@@ -5,7 +5,7 @@ let obj = {
     id: 15,
     order: 1244,
     phone: {
-        // country: "ru",
+        country: "ru",
         code: 7
     },
     // points: [1, 2],
