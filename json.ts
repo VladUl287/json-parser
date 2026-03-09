@@ -1,22 +1,13 @@
 import { createCache } from "./cache"
+import { JsonCodes } from "./jsonConstants"
 import { toMetadata, Metadata, TypeName } from "./metadata"
 import { error, Result, success } from "./result"
 
-const TAB = () => 9 //\t
-const NEW_LINE = () => 10 //\n
-const LINE_END = () => 13 //\r
-const SPACE = () => 32
-const QUOTE = () => 34 //"
-const COMMA = () => 44 //,
-const SEPARATOR = () => 58 //:
-const OPEN = () => 123 //{
-const CLOSE = () => 125 //}
-const BRANCE_OPEN = () => 91 //[
-const BRANCE_CLOSE = () => 93 //]
-
 function skipWhitespace(bytes: Uint8Array<ArrayBuffer>, i: number): number {
+    const { SPACE, TAB, NEW_LINE, CARRIAGE_RETURN } = JsonCodes
+
     let byte = bytes[i]
-    while (byte === SPACE() || byte === TAB() || byte === NEW_LINE() || byte === LINE_END()) {
+    while (byte === SPACE || byte === TAB || byte === NEW_LINE || byte === CARRIAGE_RETURN) {
         byte = bytes[++i]
     }
     return i
@@ -27,7 +18,7 @@ function parseObject(ctx: ParseContext): Result<[unknown, number], string> {
 
     index = skipWhitespace(bytes, index)
 
-    if (bytes[index] !== OPEN())
+    if (bytes[index] !== JsonCodes.CURLY_OPEN)
         return error(`fail parseObject open not found ${index}  ${ctx.depth}`)
     index++
 
@@ -37,7 +28,7 @@ function parseObject(ctx: ParseContext): Result<[unknown, number], string> {
 
             index = skipWhitespace(bytes, index)
 
-            if (bytes[index] !== QUOTE())
+            if (bytes[index] !== JsonCodes.DOUBLE_QUOTE)
                 throw new Error(`not start of property ${index}`)
             index++
 
@@ -52,7 +43,7 @@ function parseObject(ctx: ParseContext): Result<[unknown, number], string> {
             }
             index++
 
-            if (bytes[index] !== SEPARATOR())
+            if (bytes[index] !== JsonCodes.COLON)
                 throw new Error(`not end of property`)
             index++
 
@@ -74,7 +65,7 @@ function parseObject(ctx: ParseContext): Result<[unknown, number], string> {
     const fields = getFields((metadata as Metadata).value as Metadata[])
     const result = Object.fromEntries(fields)
 
-    if (bytes[index] !== CLOSE())
+    if (bytes[index] !== JsonCodes.CURLY_CLOSE)
         return error("fail parseObject close not found")
 
     index = skipWhitespace(bytes, index)
@@ -111,12 +102,12 @@ let parseNubmer: Converter = ({ bytes, metadata, index, options }) => {
     index = skipWhitespace(bytes, index)
 
     let j = index
-    while (bytes[j] !== CLOSE() && bytes[j] !== COMMA()) {
+    while (bytes[j] !== JsonCodes.CURLY_CLOSE && bytes[j] !== JsonCodes.COMMA) {
         j++
     }
 
     const str = new TextDecoder().decode(bytes.slice(index, j))
-    const indexAfterValue = bytes[j] === COMMA() ? j + 1 : j
+    const indexAfterValue = bytes[j] === JsonCodes.COMMA ? j + 1 : j
 
     return success([Number(str), indexAfterValue])
 }
@@ -124,12 +115,12 @@ let parseNubmer: Converter = ({ bytes, metadata, index, options }) => {
 function parseString({ bytes, index, options, metadata }: ParseContext): Result<[unknown, number], string> {
     index = skipWhitespace(bytes, index)
 
-    if (bytes[index] !== QUOTE())
+    if (bytes[index] !== JsonCodes.DOUBLE_QUOTE)
         return error("not quote")
     index++
 
     let start = index
-    while (bytes[index] !== QUOTE()) {
+    while (bytes[index] !== JsonCodes.DOUBLE_QUOTE) {
         index++
     }
 
@@ -137,7 +128,7 @@ function parseString({ bytes, index, options, metadata }: ParseContext): Result<
     const result = decoder.decode(bytes.slice(start, index))
     index++
 
-    const indexAfterValue = bytes[index] === COMMA() ? index + 1 : index
+    const indexAfterValue = bytes[index] === JsonCodes.COMMA ? index + 1 : index
     return success([result, indexAfterValue])
 }
 
