@@ -1,8 +1,8 @@
 import { createCache } from "./cache"
 import { JsonCodes } from "./jsonConstants"
-import { Converter, JsonOptions, DeserializeContext } from "./jsonTypes"
+import { Converter, JsonOptions, ParseContext, ConverterResult } from "./jsonTypes"
 import { toMetadata, Metadata, TypeName } from "./metadata"
-import { error, Result, success } from "./result"
+import { error, success } from "./result"
 
 function skipWhitespace(bytes: Uint8Array<ArrayBuffer>, i: number): number {
     const { SPACE, TAB, NEW_LINE, CARRIAGE_RETURN } = JsonCodes
@@ -14,7 +14,7 @@ function skipWhitespace(bytes: Uint8Array<ArrayBuffer>, i: number): number {
     return i
 }
 
-function parseObject(ctx: DeserializeContext): Result<[unknown, number], string> {
+function parseObject(ctx: ParseContext): ConverterResult {
     let { bytes, index, options, metadata } = ctx
 
     index = skipWhitespace(bytes, index)
@@ -23,7 +23,7 @@ function parseObject(ctx: DeserializeContext): Result<[unknown, number], string>
         return error(`fail parseObject open not found ${index}  ${ctx.depth}`)
     index++
 
-    function* getFields(fields: Metadata[]): Iterable<readonly [PropertyKey, any]> {
+    function* toFields(fields: Metadata[]): Iterable<readonly [PropertyKey, any]> {
         for (let i = 0; i < fields.length; i++) {
             const field = fields[i]
 
@@ -63,7 +63,7 @@ function parseObject(ctx: DeserializeContext): Result<[unknown, number], string>
         }
     }
 
-    const fields = getFields((metadata as Metadata).value as Metadata[])
+    const fields = toFields((metadata as Metadata).value as Metadata[])
     const result = Object.fromEntries(fields)
 
     if (bytes[index] !== JsonCodes.CURLY_CLOSE)
@@ -74,7 +74,7 @@ function parseObject(ctx: DeserializeContext): Result<[unknown, number], string>
     return success([result, index])
 }
 
-export function parseValue(ctx: DeserializeContext): Result<[unknown, number], string> {
+function parseValue(ctx: ParseContext): ConverterResult {
     const { metadata, options, depth } = ctx
 
     if (depth > options.maxDepth)
@@ -91,7 +91,7 @@ export function parseValue(ctx: DeserializeContext): Result<[unknown, number], s
     })
 }
 
-let parseNubmer: Converter = ({ bytes, metadata, index, options }) => {
+function parseNubmer({ bytes, index }: ParseContext): ConverterResult {
     index = skipWhitespace(bytes, index)
 
     let j = index
@@ -105,7 +105,7 @@ let parseNubmer: Converter = ({ bytes, metadata, index, options }) => {
     return success([Number(str), indexAfterValue])
 }
 
-function parseString({ bytes, index, options, metadata }: DeserializeContext): Result<[unknown, number], string> {
+function parseString({ bytes, index }: ParseContext): ConverterResult {
     index = skipWhitespace(bytes, index)
 
     if (bytes[index] !== JsonCodes.DOUBLE_QUOTE)

@@ -1,7 +1,8 @@
 import { Metadata, TypeName } from "./metadata"
 import { Result } from "./result"
 
-export type Converter = (ctx: DeserializeContext) => Result<[unknown, number], string>
+export type ConverterResult = Result<[unknown, number], string>
+export type Converter = (ctx: ParseContext) => ConverterResult
 
 export type JsonOptions = {
     encoder?: TextEncoder
@@ -12,7 +13,7 @@ export type JsonOptions = {
     allowDuplicateProperties?: boolean
 }
 
-export type DeserializeContext = {
+export type ParseContext = {
     bytes: Uint8Array<ArrayBuffer>
     metadata: Metadata | Metadata[]
     options: JsonOptions
