@@ -128,7 +128,9 @@ const metadataCache = createCache<unknown, Metadata>()
 
 const defaultOptions: JsonOptions = Object.freeze({
     encoder: new TextEncoder(),
-    decoder: new TextDecoder('utf-8'),
+    decoder: new TextDecoder('utf-8', {
+        fatal: true
+    }),
     converters: new Map<TypeName, Converter>([
         ["number", parseNubmer],
         ["string", parseString],
