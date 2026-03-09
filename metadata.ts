@@ -26,16 +26,16 @@ function getType(value: unknown): TypeName {
     if (value instanceof Date)
         return "date"
 
-    if (value instanceof Map) 
+    if (value instanceof Map)
         return "map"
 
-    if (value instanceof Set) 
+    if (value instanceof Set)
         return "set"
 
     return typeof value
 }
 
-export function toMetadata(object: unknown): Metadata | undefined {
+export function toMetadata(object: unknown): Metadata {
     return {
         defaultValue: object,
         type: getType(object),
