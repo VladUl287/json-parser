@@ -1,16 +1,25 @@
 import { deserialize } from "./json"
 import { toMetadata } from "./metadata"
 
-let obj = { 
-    id: 15, 
+let obj = {
+    id: 15,
     order: 1244,
-    points: [{ id: 1, names: ["test", "test1"] }],
+    phone: {
+        country: "ru",
+        code: 7
+    },
+    points: [1, 2],
+    // points: [{ id: 1, names: ["test", "test1"] }],
     createdAt: new Date(),
     updatedAt: new Date(),
 }
 
-let value = JSON.stringify(obj)
+const metadata = toMetadata(obj)
 
-let deserialized = deserialize(value, obj)
+console.log(JSON.stringify(metadata, null, 2))
 
-console.log(deserialized)
+// let value = JSON.stringify(obj)
+
+// let deserialized = deserialize(value, obj)
+
+// console.log(deserialized)
