@@ -6,6 +6,7 @@ export type Converter = (ctx: ParseContext) => ConverterResult
 
 export type JsonOptions = {
     encoder?: TextEncoder
+    decoder?: TextDecoder
     converters?: Map<TypeName, Converter>
     maxDepth?: number
     allowTrailingCommas?: boolean,

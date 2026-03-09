@@ -4,6 +4,23 @@ import { Converter, JsonOptions, ParseContext, ConverterResult } from "./jsonTyp
 import { toMetadata, Metadata, TypeName } from "./metadata"
 import { error, success } from "./result"
 
+function parseValue(ctx: ParseContext): ConverterResult {
+    const { metadata, options, depth } = ctx
+
+    if (depth > options.maxDepth)
+        return error(`Max depth hit ${options.maxDepth}`)
+
+    const converter = options.converters.get((metadata as Metadata).type)
+
+    if (!converter)
+        return error(`Converter not found for type ${(metadata as Metadata).type}`)
+
+    return converter({
+        ...ctx,
+        depth: depth + 1
+    })
+}
+
 function skipWhitespace(bytes: Uint8Array<ArrayBuffer>, i: number): number {
     const { SPACE, TAB, NEW_LINE, CARRIAGE_RETURN } = JsonCodes
 
@@ -74,24 +91,7 @@ function parseObject(ctx: ParseContext): ConverterResult {
     return success([result, index])
 }
 
-function parseValue(ctx: ParseContext): ConverterResult {
-    const { metadata, options, depth } = ctx
-
-    if (depth > options.maxDepth)
-        return error(`Max depth hit ${options.maxDepth}`)
-
-    const converter = options.converters.get((metadata as Metadata).type)
-
-    if (!converter)
-        return error(`Converter not found for type ${(metadata as Metadata).type}`)
-
-    return converter({
-        ...ctx,
-        depth: depth + 1
-    })
-}
-
-function parseNubmer({ bytes, index }: ParseContext): ConverterResult {
+function parseNubmer({ bytes, index, options }: ParseContext): ConverterResult {
     index = skipWhitespace(bytes, index)
 
     let j = index
@@ -99,13 +99,13 @@ function parseNubmer({ bytes, index }: ParseContext): ConverterResult {
         j++
     }
 
-    const str = new TextDecoder().decode(bytes.slice(index, j))
+    const numberString = options.decoder.decode(bytes.slice(index, j))
     const indexAfterValue = bytes[j] === JsonCodes.COMMA ? j + 1 : j
 
-    return success([Number(str), indexAfterValue])
+    return success([Number(numberString), indexAfterValue])
 }
 
-function parseString({ bytes, index }: ParseContext): ConverterResult {
+function parseString({ bytes, index, options }: ParseContext): ConverterResult {
     index = skipWhitespace(bytes, index)
 
     if (bytes[index] !== JsonCodes.DOUBLE_QUOTE)
@@ -117,18 +117,18 @@ function parseString({ bytes, index }: ParseContext): ConverterResult {
         index++
     }
 
-    const decoder = new TextDecoder()
-    const result = decoder.decode(bytes.slice(start, index))
+    const stringValue = options.decoder.decode(bytes.slice(start, index))
     index++
 
     const indexAfterValue = bytes[index] === JsonCodes.COMMA ? index + 1 : index
-    return success([result, indexAfterValue])
+    return success([stringValue, indexAfterValue])
 }
 
 const metadataCache = createCache<unknown, Metadata>()
 
 const defaultOptions: JsonOptions = Object.freeze({
     encoder: new TextEncoder(),
+    decoder: new TextDecoder('utf-8'),
     converters: new Map<TypeName, Converter>([
         ["number", parseNubmer],
         ["string", parseString],
