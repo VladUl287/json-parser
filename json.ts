@@ -11,7 +11,6 @@ function parseValue(ctx: ParseContext): ConverterResult {
         return error(`Max depth hit ${options.maxDepth}`)
 
     const converter = options.converters.get((metadata as Metadata).type)
-
     if (!converter)
         return error(`Converter not found for type ${(metadata as Metadata).type}`)
 
@@ -76,6 +75,13 @@ function parseObject(ctx: ParseContext): ConverterResult {
 
             index = resultValue[1]
 
+            if (bytes[index] === JsonCodes.COMMA) {
+                if (fields.length - 1 === i && !options.allowTrailingCommas) {
+                    throw new Error("trailing comma")
+                }
+                index++
+            }
+
             yield [field.name, resultValue[0]]
         }
     }
@@ -100,9 +106,7 @@ function parseNubmer({ bytes, index, options }: ParseContext): ConverterResult {
     }
 
     const numberString = options.decoder.decode(bytes.slice(index, j))
-    const indexAfterValue = bytes[j] === JsonCodes.COMMA ? j + 1 : j
-
-    return success([Number(numberString), indexAfterValue])
+    return success([Number(numberString), j])
 }
 
 function parseString({ bytes, index, options }: ParseContext): ConverterResult {
@@ -120,8 +124,7 @@ function parseString({ bytes, index, options }: ParseContext): ConverterResult {
     const stringValue = options.decoder.decode(bytes.slice(start, index))
     index++
 
-    const indexAfterValue = bytes[index] === JsonCodes.COMMA ? index + 1 : index
-    return success([stringValue, indexAfterValue])
+    return success([stringValue, index])
 }
 
 const metadataCache = createCache<unknown, Metadata>()
