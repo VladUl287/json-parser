@@ -14,6 +14,6 @@ export type Converter = (ctx: ParseContext) => ConverterResult
 export type ConverterResult = Result<[unknown, number], string>
 
 export type ParseResult<T> = {
-    result: T
+    value: T
     nextIndex: number
 }
