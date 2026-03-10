@@ -6,6 +6,7 @@ export type ConvertState = {
     readonly bytes: Uint8Array<ArrayBuffer>
     readonly metadata: Metadata | Metadata[]
     readonly options: JsonOptions
+    readonly convert: Converter<unknown>
     index: number
     depth: number
 }

@@ -41,7 +41,7 @@ export function parseObject(ctx: ConvertState): Result<ConvertResult<object>, st
 
             index = skipWhitespace(bytes, index)
 
-            const parseResult = parseValue({
+            const parseResult = ctx.convert({
                 ...ctx,
                 metadata: field,
                 index

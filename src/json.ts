@@ -53,6 +53,7 @@ export function deserialize<T>(json: string, object: T, options?: JsonOptions): 
         bytes,
         metadata: metadata,
         options: options,
+        convert: parseValue,
         index: 0,
         depth: 0
     })
