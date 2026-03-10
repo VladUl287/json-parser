@@ -1,5 +1,5 @@
-import { Converter } from "./json/converters/types"
-import { TypeName } from "./metadata"
+import { Converter } from "./converters/types"
+import { TypeName } from "../metadata"
 
 export type JsonOptions = {
     encoder?: TextEncoder

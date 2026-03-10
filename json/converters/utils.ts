@@ -1,4 +1,4 @@
-import { JsonCodes } from "../../jsonConstants"
+import { JsonCodes } from "../utils/constants"
 
 const whitespace = new Set([JsonCodes.SPACE, JsonCodes.TAB, JsonCodes.NEW_LINE, JsonCodes.CARRIAGE_RETURN])
 

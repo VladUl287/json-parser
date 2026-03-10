@@ -1,5 +1,5 @@
-import { parseValue } from "../../json"
-import { JsonCodes } from "../../jsonConstants"
+import { parseValue } from "../serailizer"
+import { JsonCodes } from "../utils/constants"
 import { Metadata } from "../../metadata"
 import { error, success } from "../../result"
 import { ConverterResult, ParseContext } from "./types"

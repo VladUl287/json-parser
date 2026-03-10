@@ -1,4 +1,4 @@
-import { JsonCodes } from "../../jsonConstants"
+import { JsonCodes } from "../utils/constants"
 import { success } from "../../result"
 import { ConverterResult, ParseContext } from "./types"
 import { skipWhitespace } from "./utils"

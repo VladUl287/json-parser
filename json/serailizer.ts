@@ -1,11 +1,11 @@
-import { createCache } from "./cache"
-import { parseNubmer } from "./json/converters/number"
-import { parseObject } from "./json/converters/object"
-import { parseString } from "./json/converters/string"
-import { Converter, ConverterResult, ParseContext } from "./json/converters/types"
-import { JsonOptions} from "./jsonTypes"
-import { toMetadata, Metadata, TypeName } from "./metadata"
-import { error, success } from "./result"
+import { createCache } from "../cache"
+import { parseNubmer } from "./converters/number"
+import { parseObject } from "./converters/object"
+import { parseString } from "./converters/string"
+import { Converter, ConverterResult, ParseContext } from "./converters/types"
+import { JsonOptions} from "./types"
+import { toMetadata, Metadata, TypeName } from "../metadata"
+import { error, success } from "../result"
 
 export function parseValue(ctx: ParseContext): ConverterResult {
     const { metadata, options, depth } = ctx

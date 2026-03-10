@@ -1,4 +1,4 @@
-import { JsonOptions } from "../../jsonTypes"
+import { JsonOptions } from "../types"
 import { Metadata } from "../../metadata"
 import { Result } from "../../result"
 

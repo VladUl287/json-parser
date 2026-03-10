@@ -1,4 +1,4 @@
-import { deserialize } from "./json"
+import { deserialize } from "./json/serailizer"
 import { toMetadata } from "./metadata"
 
 let obj = {
