@@ -6,7 +6,7 @@ import { Converter, ConvertResult, ConvertState } from "./converters/types"
 import { toMetadata, Metadata, TypeName } from "./metadata/metadata"
 import { error, Result } from "./utils/result"
 import { JsonOptions } from "./options/types"
-import { addOptions } from "./options"
+import { mergerOptions } from "./options"
 
 export function parseValue(ctx: ConvertState): Result<ConvertResult<unknown>, string> {
     const { metadata, options, depth } = ctx
@@ -43,7 +43,7 @@ const defaultOptions: JsonOptions = Object.freeze({
 })
 
 export function deserialize<T>(json: string, object: T, options?: JsonOptions): T {
-    options = addOptions(defaultOptions, options)
+    options = mergerOptions(defaultOptions, options)
 
     const metadata = metadataCache.getOrAdd(object, (obj) => toMetadata(obj))
 

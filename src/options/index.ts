@@ -2,15 +2,15 @@ import { TypeName } from "../metadata/metadata";
 import { Converter } from "../converters/types";
 import { JsonOptions } from "./types";
 
-export function addOptions(dest: JsonOptions, options?: JsonOptions): JsonOptions {
+export function mergerOptions(base: JsonOptions, additional?: JsonOptions): JsonOptions {
     return {
-        ...dest,
+        ...base,
         ...Object.fromEntries(
-            Object.entries(options ?? {}).filter(([_, value]) => Boolean(value))
+            Object.entries(additional ?? {}).filter(([_, value]) => Boolean(value))
         ),
         converters: new Map<TypeName, Converter<unknown>>([
-            ...dest.converters,
-            ...(options?.converters ?? [])
+            ...base.converters,
+            ...(additional?.converters ?? [])
         ])
     }
 }
