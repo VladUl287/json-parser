@@ -2,7 +2,7 @@ import { Metadata } from "../../metadata"
 import { Result } from "../../result"
 import { JsonOptions } from "../options/types"
 
-export type ParseContext = {
+export type ConvertState = {
     readonly bytes: Uint8Array<ArrayBuffer>
     readonly metadata: Metadata | Metadata[]
     readonly options: JsonOptions
@@ -10,10 +10,9 @@ export type ParseContext = {
     depth: number
 }
 
-export type Converter = (ctx: ParseContext) => ConverterResult
-export type ConverterResult = Result<[unknown, number], string>
+export type Converter<T> = (ctx: ConvertState) => Result<ConvertResult<T>, string>
 
-export type ParseResult<T> = {
+export type ConvertResult<T> = {
     readonly value: T
     readonly nextIndex: number
 }

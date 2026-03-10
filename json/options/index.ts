@@ -8,7 +8,7 @@ export function addOptions(dest: JsonOptions, options?: JsonOptions): JsonOption
         ...Object.fromEntries(
             Object.entries(options ?? {}).filter(([_, value]) => Boolean(value))
         ),
-        converters: new Map<TypeName, Converter>([
+        converters: new Map<TypeName, Converter<unknown>>([
             ...dest.converters,
             ...(options?.converters ?? [])
         ])

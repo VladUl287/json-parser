@@ -1,9 +1,9 @@
 import { JsonCodes } from "../utils/constants"
-import { error, success } from "../../result"
-import { ConverterResult, ParseContext } from "./types"
+import { error, Result, success } from "../../result"
+import { ConvertResult, ConvertState } from "./types"
 import { skipWhitespace } from "./utils"
 
-export function parseString({ bytes, index, options }: ParseContext): ConverterResult {
+export function parseString({ bytes, index, options }: ConvertState): Result<ConvertResult<string>, string> {
     index = skipWhitespace(bytes, index)
 
     if (bytes[index] !== JsonCodes.DOUBLE_QUOTE)
@@ -18,5 +18,8 @@ export function parseString({ bytes, index, options }: ParseContext): ConverterR
     const stringValue = options.decoder.decode(bytes.slice(start, index))
     index++
 
-    return success([stringValue, index])
+    return success({
+        value: stringValue,
+        nextIndex: index
+    })
 }

@@ -1,9 +1,9 @@
 import { JsonCodes } from "../utils/constants"
-import { success } from "../../result"
-import { ConverterResult, ParseContext } from "./types"
+import { Result, success } from "../../result"
+import { ConvertResult, ConvertState } from "./types"
 import { skipWhitespace } from "./utils"
 
-export function parseNubmer({ bytes, index, options }: ParseContext): ConverterResult {
+export function parseNubmer({ bytes, index, options }: ConvertState): Result<ConvertResult<number>, string> {
     index = skipWhitespace(bytes, index)
 
     let j = index
@@ -12,5 +12,8 @@ export function parseNubmer({ bytes, index, options }: ParseContext): ConverterR
     }
 
     const numberString = options.decoder.decode(bytes.slice(index, j))
-    return success([Number(numberString), j])
+    return success({
+        value: Number(numberString),
+        nextIndex: j
+    })
 }

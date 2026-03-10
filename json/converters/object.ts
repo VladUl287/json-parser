@@ -1,11 +1,11 @@
 import { parseValue } from "../serailizer"
 import { JsonCodes } from "../utils/constants"
 import { Metadata } from "../../metadata"
-import { error, success } from "../../result"
-import { ConverterResult, ParseContext } from "./types"
+import { error, Result, success } from "../../result"
+import { ConvertResult, ConvertState } from "./types"
 import { skipWhitespace } from "./utils"
 
-export function parseObject(ctx: ParseContext): ConverterResult {
+export function parseObject(ctx: ConvertState): Result<ConvertResult<object>, string> {
     let { bytes, index, options, metadata } = ctx
 
     index = skipWhitespace(bytes, index)
@@ -69,5 +69,8 @@ export function parseObject(ctx: ParseContext): ConverterResult {
 
     index = skipWhitespace(bytes, index)
 
-    return success([result, index])
+    return success({
+        value: result,
+        nextIndex: index
+    })
 }

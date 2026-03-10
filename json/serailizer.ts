@@ -2,13 +2,13 @@ import { createCache } from "../cache"
 import { parseNubmer } from "./converters/number"
 import { parseObject } from "./converters/object"
 import { parseString } from "./converters/string"
-import { Converter, ConverterResult, ParseContext } from "./converters/types"
+import { Converter, ConvertResult, ConvertState } from "./converters/types"
 import { toMetadata, Metadata, TypeName } from "../metadata"
-import { error, success } from "../result"
+import { error, Result } from "../result"
 import { JsonOptions } from "./options/types"
 import { addOptions } from "./options"
 
-export function parseValue(ctx: ParseContext): ConverterResult {
+export function parseValue(ctx: ConvertState): Result<ConvertResult<unknown>, string> {
     const { metadata, options, depth } = ctx
 
     if (depth > options.maxDepth)
@@ -31,7 +31,7 @@ const defaultOptions: JsonOptions = Object.freeze({
     decoder: new TextDecoder('utf-8', {
         fatal: true
     }),
-    converters: new Map<TypeName, Converter>([
+    converters: new Map<TypeName, Converter<unknown>>([
         ["number", parseNubmer],
         ["string", parseString],
         ["object", parseObject]
