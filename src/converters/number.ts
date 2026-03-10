@@ -3,7 +3,7 @@ import { Result, success } from "../utils/result"
 import { ConvertResult, ConvertState } from "./types"
 import { skipWhitespace } from "./utils"
 
-export function parseNumber({ bytes, index, options }: ConvertState): Result<ConvertResult<number>, string> {
+export function convertNumber({ bytes, index, options }: ConvertState): Result<ConvertResult<number>, string> {
     index = skipWhitespace(bytes, index)
 
     let j = index

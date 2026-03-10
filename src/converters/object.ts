@@ -4,7 +4,7 @@ import { error, Result, success } from "../utils/result"
 import { ConvertResult, ConvertState } from "./types"
 import { skipWhitespace } from "./utils"
 
-export function parseObject(ctx: ConvertState): Result<ConvertResult<object>, string> {
+export function convertObject(ctx: ConvertState): Result<ConvertResult<object>, string> {
     let { bytes, index, options, metadata } = ctx
 
     index = skipWhitespace(bytes, index)

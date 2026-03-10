@@ -1,17 +1,17 @@
 import { TypeName } from "../metadata/metadata"
 import { Converter } from "./types"
-import { parseNumber } from "./number"
-import { parseString } from "./string"
-import { parseObject } from "./object"
+import { convertNumber } from "./number"
+import { convertString } from "./string"
+import { convertObject } from "./object"
 
-type ConvertersMap = Map<TypeName, Converter<unknown>>
+type ConverterMap = Map<TypeName, Converter<unknown>>
 
-export const createConverters = (): ConvertersMap =>
+export const createConverters = (): ConverterMap =>
     new Map<TypeName, Converter<unknown>>([
-        ["number", parseNumber],
-        ["string", parseString],
-        ["object", parseObject]
+        ["number", convertNumber],
+        ["string", convertString],
+        ["object", convertObject]
     ])
 
-export const extendConverters = (base: ConvertersMap, extensions: ConvertersMap): ConvertersMap =>
+export const extendConverters = (base: ConverterMap, extensions: ConverterMap): ConverterMap =>
     new Map([...base, ...extensions])

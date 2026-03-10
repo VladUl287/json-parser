@@ -1,14 +1,44 @@
-import { createCache } from "./cache/cache"
-import { parseNumber } from "./converters/number"
-import { parseObject } from "./converters/object"
-import { parseString } from "./converters/string"
+import { convertNumber } from "./converters/number"
+import { convertObject } from "./converters/object"
+import { convertString } from "./converters/string"
 import { Converter, ConvertResult, ConvertState } from "./converters/types"
-import { toMetadata, Metadata, TypeName } from "./metadata/metadata"
+import { Metadata, TypeName } from "./metadata/metadata"
 import { error, Result } from "./utils/result"
 import { JsonOptions } from "./options/types"
 import { mergerOptions } from "./options"
 
-function parseValue(ctx: ConvertState): Result<ConvertResult<unknown>, string> {
+const defaultOptions: JsonOptions = Object.freeze({
+    encoder: new TextEncoder(),
+    decoder: new TextDecoder('utf-8', {
+        fatal: true
+    }),
+    converters: new Map<TypeName, Converter<unknown>>([
+        ["number", convertNumber],
+        ["string", convertString],
+        ["object", convertObject]
+    ]),
+    maxDepth: 64,
+    allowTrailingCommas: false,
+    fieldCaseInsensitive: false,
+    allowDuplicateProperties: false
+})
+
+export function deserialize<T>(json: string, metadata: Metadata, options?: JsonOptions): T {
+    options = mergerOptions(defaultOptions, options)
+
+    const result = convert({
+        bytes: options.encoder.encode(json),
+        metadata: metadata,
+        options: options,
+        convert: convert,
+        index: 0,
+        depth: 0
+    })
+
+    return result.getOrElse(undefined)[0]
+}
+
+function convert<T>(ctx: ConvertState): Result<ConvertResult<T>, string> {
     const { metadata, options, depth } = ctx
 
     if (depth > options.maxDepth)
@@ -21,41 +51,5 @@ function parseValue(ctx: ConvertState): Result<ConvertResult<unknown>, string> {
     return converter({
         ...ctx,
         depth: depth + 1
-    })
-}
-
-const metadataCache = createCache<unknown, Metadata>()
-
-const defaultOptions: JsonOptions = Object.freeze({
-    encoder: new TextEncoder(),
-    decoder: new TextDecoder('utf-8', {
-        fatal: true
-    }),
-    converters: new Map<TypeName, Converter<unknown>>([
-        ["number", parseNumber],
-        ["string", parseString],
-        ["object", parseObject]
-    ]),
-    maxDepth: 64,
-    allowTrailingCommas: false,
-    fieldCaseInsensitive: false,
-    allowDuplicateProperties: false
-})
-
-export function deserialize<T>(json: string, object: T, options?: JsonOptions): T {
-    options = mergerOptions(defaultOptions, options)
-
-    const metadata = metadataCache.getOrAdd(object, (obj) => toMetadata(obj))
-
-    const bytes = options.encoder.encode(json)
-
-    const result = parseValue({
-        bytes,
-        metadata: metadata,
-        options: options,
-        convert: parseValue,
-        index: 0,
-        depth: 0
-    })
-    return result.getOrElse(undefined)[0] as T
+    }) as Result<ConvertResult<T>, string>
 }

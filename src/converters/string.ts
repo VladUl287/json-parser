@@ -3,7 +3,7 @@ import { error, Result, success } from "../utils/result"
 import { ConvertResult, ConvertState } from "./types"
 import { skipWhitespace } from "./utils"
 
-export function parseString({ bytes, index, options }: ConvertState): Result<ConvertResult<string>, string> {
+export function convertString({ bytes, index, options }: ConvertState): Result<ConvertResult<string>, string> {
     index = skipWhitespace(bytes, index)
 
     if (bytes[index] !== JsonCodes.DOUBLE_QUOTE)
