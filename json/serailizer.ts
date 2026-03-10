@@ -3,9 +3,10 @@ import { parseNubmer } from "./converters/number"
 import { parseObject } from "./converters/object"
 import { parseString } from "./converters/string"
 import { Converter, ConverterResult, ParseContext } from "./converters/types"
-import { JsonOptions} from "./types"
 import { toMetadata, Metadata, TypeName } from "../metadata"
 import { error, success } from "../result"
+import { JsonOptions } from "./options/types"
+import { addOptions } from "./options"
 
 export function parseValue(ctx: ParseContext): ConverterResult {
     const { metadata, options, depth } = ctx
@@ -42,25 +43,16 @@ const defaultOptions: JsonOptions = Object.freeze({
 })
 
 export function deserialize<T>(json: string, object: T, options?: JsonOptions): T {
-    const jsonOptions: JsonOptions = {
-        ...defaultOptions,
-        ...Object.fromEntries(
-            Object.entries(options ?? {}).filter(([_, value]) => Boolean(value))
-        ),
-        converters: new Map<TypeName, Converter>([
-            ...defaultOptions.converters,
-            ...(options?.converters ?? [])
-        ])
-    }
+    options = addOptions(defaultOptions, options)
 
     const metadata = metadataCache.getOrAdd(object, (obj) => toMetadata(obj))
 
-    const bytes = jsonOptions.encoder.encode(json)
+    const bytes = options.encoder.encode(json)
 
     const result = parseValue({
         bytes,
         metadata: metadata,
-        options: jsonOptions,
+        options: options,
         index: 0,
         depth: 0
     })

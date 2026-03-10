@@ -1,6 +1,6 @@
-import { JsonOptions } from "../types"
 import { Metadata } from "../../metadata"
 import { Result } from "../../result"
+import { JsonOptions } from "../options/types"
 
 export type ParseContext = {
     readonly bytes: Uint8Array<ArrayBuffer>
