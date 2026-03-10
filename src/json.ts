@@ -8,7 +8,7 @@ import { error, Result } from "./utils/result"
 import { JsonOptions } from "./options/types"
 import { mergerOptions } from "./options"
 
-export function parseValue(ctx: ConvertState): Result<ConvertResult<unknown>, string> {
+function parseValue(ctx: ConvertState): Result<ConvertResult<unknown>, string> {
     const { metadata, options, depth } = ctx
 
     if (depth > options.maxDepth)
