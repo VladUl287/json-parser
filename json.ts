@@ -1,10 +1,13 @@
 import { createCache } from "./cache"
-import { JsonCodes } from "./jsonConstants"
-import { Converter, JsonOptions, ParseContext, ConverterResult } from "./jsonTypes"
+import { parseNubmer } from "./json/converters/number"
+import { parseObject } from "./json/converters/object"
+import { parseString } from "./json/converters/string"
+import { Converter, ConverterResult, ParseContext } from "./json/converters/types"
+import { JsonOptions} from "./jsonTypes"
 import { toMetadata, Metadata, TypeName } from "./metadata"
 import { error, success } from "./result"
 
-function parseValue(ctx: ParseContext): ConverterResult {
+export function parseValue(ctx: ParseContext): ConverterResult {
     const { metadata, options, depth } = ctx
 
     if (depth > options.maxDepth)
@@ -18,113 +21,6 @@ function parseValue(ctx: ParseContext): ConverterResult {
         ...ctx,
         depth: depth + 1
     })
-}
-
-function skipWhitespace(bytes: Uint8Array<ArrayBuffer>, i: number): number {
-    const { SPACE, TAB, NEW_LINE, CARRIAGE_RETURN } = JsonCodes
-
-    let byte = bytes[i]
-    while (byte === SPACE || byte === TAB || byte === NEW_LINE || byte === CARRIAGE_RETURN) {
-        byte = bytes[++i]
-    }
-    return i
-}
-
-function parseObject(ctx: ParseContext): ConverterResult {
-    let { bytes, index, options, metadata } = ctx
-
-    index = skipWhitespace(bytes, index)
-
-    if (bytes[index] !== JsonCodes.CURLY_OPEN)
-        return error(`fail parseObject open not found ${index}  ${ctx.depth}`)
-    index++
-
-    function* toFields(fields: Metadata[]): Iterable<readonly [PropertyKey, any]> {
-        for (let i = 0; i < fields.length; i++) {
-            const field = fields[i]
-
-            index = skipWhitespace(bytes, index)
-
-            if (bytes[index] !== JsonCodes.DOUBLE_QUOTE)
-                throw new Error(`not start of property ${index}`)
-            index++
-
-            const fieldName = options.encoder.encode(field.name)
-            let j = 0
-            while (j < fieldName.length) {
-                if (bytes[index] !== fieldName[j])
-                    throw new Error(`not correct property ${field.name}`)
-
-                index++
-                j++
-            }
-            index++
-
-            if (bytes[index] !== JsonCodes.COLON)
-                throw new Error(`not end of property`)
-            index++
-
-            index = skipWhitespace(bytes, index)
-
-            const parseResult = parseValue({
-                ...ctx,
-                metadata: field,
-                index
-            })
-            const resultValue = parseResult.getOrElse(null)
-
-            index = resultValue[1]
-
-            if (bytes[index] === JsonCodes.COMMA) {
-                if (fields.length - 1 === i && !options.allowTrailingCommas) {
-                    throw new Error("trailing comma")
-                }
-                index++
-            }
-
-            yield [field.name, resultValue[0]]
-        }
-    }
-
-    const fields = toFields((metadata as Metadata).value as Metadata[])
-    const result = Object.fromEntries(fields)
-
-    if (bytes[index] !== JsonCodes.CURLY_CLOSE)
-        return error("fail parseObject close not found")
-
-    index = skipWhitespace(bytes, index)
-
-    return success([result, index])
-}
-
-function parseNubmer({ bytes, index, options }: ParseContext): ConverterResult {
-    index = skipWhitespace(bytes, index)
-
-    let j = index
-    while (bytes[j] !== JsonCodes.CURLY_CLOSE && bytes[j] !== JsonCodes.COMMA) {
-        j++
-    }
-
-    const numberString = options.decoder.decode(bytes.slice(index, j))
-    return success([Number(numberString), j])
-}
-
-function parseString({ bytes, index, options }: ParseContext): ConverterResult {
-    index = skipWhitespace(bytes, index)
-
-    if (bytes[index] !== JsonCodes.DOUBLE_QUOTE)
-        return error("not quote")
-    index++
-
-    let start = index
-    while (bytes[index] !== JsonCodes.DOUBLE_QUOTE) {
-        index++
-    }
-
-    const stringValue = options.decoder.decode(bytes.slice(start, index))
-    index++
-
-    return success([stringValue, index])
 }
 
 const metadataCache = createCache<unknown, Metadata>()
@@ -160,8 +56,6 @@ export function deserialize<T>(json: string, object: T, options?: JsonOptions): 
     const metadata = metadataCache.getOrAdd(object, (obj) => toMetadata(obj))
 
     const bytes = jsonOptions.encoder.encode(json)
-
-    console.log(bytes, '\n\n')
 
     const result = parseValue({
         bytes,
