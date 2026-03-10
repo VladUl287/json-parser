@@ -1,5 +1,5 @@
 import { JsonCodes } from "../utils/constants"
-import { error, Result, success } from "../../result"
+import { error, Result, success } from "../utils/result"
 import { ConvertResult, ConvertState } from "./types"
 import { skipWhitespace } from "./utils"
 

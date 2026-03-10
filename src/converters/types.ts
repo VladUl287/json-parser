@@ -1,5 +1,5 @@
-import { Metadata } from "../../metadata"
-import { Result } from "../../result"
+import { Metadata } from "../metadata/metadata"
+import { Result } from "../utils/result"
 import { JsonOptions } from "../options/types"
 
 export type ConvertState = {

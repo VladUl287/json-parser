@@ -1,10 +1,10 @@
-import { createCache } from "../cache"
+import { createCache } from "./cache/cache"
 import { parseNumber } from "./converters/number"
 import { parseObject } from "./converters/object"
 import { parseString } from "./converters/string"
 import { Converter, ConvertResult, ConvertState } from "./converters/types"
-import { toMetadata, Metadata, TypeName } from "../metadata"
-import { error, Result } from "../result"
+import { toMetadata, Metadata, TypeName } from "./metadata/metadata"
+import { error, Result } from "./utils/result"
 import { JsonOptions } from "./options/types"
 import { addOptions } from "./options"
 

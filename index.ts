@@ -1,5 +1,5 @@
-import { deserialize } from "./json/serailizer"
-import { toMetadata } from "./metadata"
+import { deserialize } from "./src/json"
+import { toMetadata } from "./src/metadata/metadata"
 
 let obj = {
     id: 15,

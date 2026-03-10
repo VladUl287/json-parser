@@ -1,7 +1,7 @@
-import { parseValue } from "../serailizer"
+import { parseValue } from "../json"
 import { JsonCodes } from "../utils/constants"
-import { Metadata } from "../../metadata"
-import { error, Result, success } from "../../result"
+import { Metadata } from "../metadata/metadata"
+import { error, Result, success } from "../utils/result"
 import { ConvertResult, ConvertState } from "./types"
 import { skipWhitespace } from "./utils"
 

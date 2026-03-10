@@ -1,4 +1,4 @@
-import { TypeName } from "../../metadata"
+import { TypeName } from "../metadata/metadata"
 import { Converter } from "./types"
 import { parseNumber } from "./number"
 import { parseString } from "./string"
