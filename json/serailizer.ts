@@ -1,5 +1,5 @@
 import { createCache } from "../cache"
-import { parseNubmer } from "./converters/number"
+import { parseNumber } from "./converters/number"
 import { parseObject } from "./converters/object"
 import { parseString } from "./converters/string"
 import { Converter, ConvertResult, ConvertState } from "./converters/types"
@@ -32,7 +32,7 @@ const defaultOptions: JsonOptions = Object.freeze({
         fatal: true
     }),
     converters: new Map<TypeName, Converter<unknown>>([
-        ["number", parseNubmer],
+        ["number", parseNumber],
         ["string", parseString],
         ["object", parseObject]
     ]),
