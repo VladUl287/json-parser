@@ -62,7 +62,6 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
     //     continue
     // }
 
-    console.log(mantissa, exponent, Math.pow(10, exponent))
     return Number(mantissa) * Math.pow(10, exponent)
 }
 

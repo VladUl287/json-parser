@@ -2,12 +2,10 @@ import { parseNumberF64, parseUTF8BytesToNumber } from "./src/converters/number"
 import { deserialize } from "./src/json"
 import { toMetadata } from "./src/metadata/metadata"
 
-const bytes = new TextEncoder().encode("15.45")
+const bytes = new TextEncoder().encode("15.4532")
 console.log(bytes)
 console.log(parseNumberF64(bytes.subarray(0, bytes.length)))
 console.log(parseUTF8BytesToNumber(bytes, 0, bytes.length))
-
-console.log(JSON.parse("{\"id\": 15.45}"))
 
 // let obj = {
 //     id: 15,
