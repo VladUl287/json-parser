@@ -1,27 +1,35 @@
+import { parseNumberF64, parseUTF8BytesToNumber } from "./src/converters/number"
 import { deserialize } from "./src/json"
 import { toMetadata } from "./src/metadata/metadata"
 
-let obj = {
-    id: 15,
-    order: 1244,
-    phone: {
-        country: "ru",
-        code: 7
-    },
-    // points: [1, 2],
-    // points: [{ id: 1, names: ["test", "test1"] }],
-    // createdAt: new Date(),
-    // updatedAt: new Date(),
-}
+const bytes = new TextEncoder().encode("15.45")
+console.log(bytes)
+console.log(parseNumberF64(bytes.subarray(0, bytes.length)))
+console.log(parseUTF8BytesToNumber(bytes, 0, bytes.length))
 
-const metadata = toMetadata(obj)
+console.log(JSON.parse("{\"id\": 15.45}"))
 
-console.log(JSON.stringify(metadata, null, 4), '\n\n')
+// let obj = {
+//     id: 15,
+//     order: 1244,
+//     phone: {
+//         country: "ru",
+//         code: 7
+//     },
+//     // points: [1, 2],
+//     // points: [{ id: 1, names: ["test", "test1"] }],
+//     // createdAt: new Date(),
+//     // updatedAt: new Date(),
+// }
 
-const value = JSON.stringify(obj, null, 4)
+// const metadata = toMetadata(obj)
 
-console.log(value, '\n\n')
+// console.log(JSON.stringify(metadata, null, 4), '\n\n')
 
-const deserialized = deserialize(value, obj)
+// const value = JSON.stringify(obj, null, 4)
 
-console.log(deserialized)
+// console.log(value, '\n\n')
+
+// const deserialized = deserialize(value, metadata)
+
+// console.log(deserialized)
