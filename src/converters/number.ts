@@ -171,13 +171,7 @@ export function parseUTF8BytesToNumber(uint8Array: Uint8Array, start: number, en
     }
 
     if (isFloat && decimalPlaces > 0) {
-        const firstResult = result / Math.pow(10, decimalPlaces)
-        if (firstResult > 1) {
-            result = firstResult
-        }
-        else {
-            result = result * Math.pow(10, -decimalPlaces)
-        }
+        result = result / Math.pow(10, decimalPlaces)
     }
 
     if (isNegative) {
