@@ -57,10 +57,26 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
         }
     }
 
-    // if (bytes[i] === 69 || bytes[i] === 101) { // 'e' or 'E'
-    //     i++
-    //     continue
-    // }
+    if (i < bytes.length && (bytes[i] === 101 || bytes[i] === 69)) { // 'e' or 'E'
+        i++
+
+        let expSign = 1
+        if (i < bytes.length && bytes[i] === 45) { // '-'
+            expSign = -1
+            i++
+        }
+        else if (i < bytes.length && bytes[i] === 43) { // '+'
+            i++
+        }
+
+        let expValue = 0;
+        while (i < bytes.length && bytes[i] >= 48 && bytes[i] <= 57) {
+            expValue = expValue * 10 + (bytes[i] - 48)
+            i++
+        }
+
+        exponent += expSign * expValue
+    }
 
     return Number(mantissa) * Math.pow(10, exponent)
 }
@@ -74,24 +90,24 @@ export function parseUTF8BytesToNumber(uint8Array: Uint8Array, start: number, en
     let exponentIsNegative = false
     let decimalPlaces = 0
 
-    const PLUS = () => 43
-    const MINUS = () => 45
-    const DOT = () => 46
-    const EXPONENT = () => 69
-    const EXPONENT_LOWER = () => 101
+    const PLUS = 43
+    const MINUS = 45
+    const DOT = 46
+    const EXPONENT = 69
+    const EXPONENT_LOWER = 101
 
-    if (uint8Array[i] === MINUS()) {
+    if (uint8Array[i] === MINUS) {
         isNegative = true
         i++
     }
-    else if (uint8Array[i] === PLUS()) {
+    else if (uint8Array[i] === PLUS) {
         i++
     }
 
     while (i < end) {
         const byte = uint8Array[i]
 
-        if (byte === DOT()) {
+        if (byte === DOT) {
             if (isFloat)
                 throw new Error('Multiple decimal points')
 
@@ -100,7 +116,7 @@ export function parseUTF8BytesToNumber(uint8Array: Uint8Array, start: number, en
             continue
         }
 
-        if (byte === EXPONENT() || byte === EXPONENT_LOWER()) {
+        if (byte === EXPONENT || byte === EXPONENT_LOWER) {
             if (hasExponent)
                 throw new Error('Multiple exponents')
 
@@ -108,11 +124,11 @@ export function parseUTF8BytesToNumber(uint8Array: Uint8Array, start: number, en
             i++
 
             if (i < end) {
-                if (uint8Array[i] === MINUS()) {
+                if (uint8Array[i] === MINUS) {
                     exponentIsNegative = true
                     i++
                 }
-                else if (uint8Array[i] === PLUS()) {
+                else if (uint8Array[i] === PLUS) {
                     i++
                 }
             }
@@ -148,14 +164,20 @@ export function parseUTF8BytesToNumber(uint8Array: Uint8Array, start: number, en
         }
 
         if (exponentIsNegative) {
-            exponent = -exponent;
+            exponent = -exponent
         }
 
         result = result * Math.pow(10, exponent)
     }
 
     if (isFloat && decimalPlaces > 0) {
-        result = result / Math.pow(10, decimalPlaces)
+        const firstResult = result / Math.pow(10, decimalPlaces)
+        if (firstResult > 1) {
+            result = firstResult
+        }
+        else {
+            result = result * Math.pow(10, -decimalPlaces)
+        }
     }
 
     if (isNegative) {
