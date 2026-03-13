@@ -43,7 +43,7 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
     while (i < bytes.length) {
         const byte = bytes[i]
 
-        if (byte < 48 || byte > 57) {
+        if (byte >= 48 && byte <= 57) {
             isDigits = true
 
             if (byte !== 48 || isNotZero) {
@@ -96,10 +96,10 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
                 i++
             }
 
-            if (bytes[i] < 48 || bytes[i] > 57) {
+            if (bytes[i] >= 48 && bytes[i] <= 57) {
                 let exponent = 0
 
-                while (bytes[i] < 48 || bytes[i] > 57) {
+                while (bytes[i] >= 48 && bytes[i] <= 57) {
                     exponent = exponent * 10 + (bytes[i] - 48)
                     i++
                 }
@@ -125,10 +125,10 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
         let _scale = Math.pow(10, fastExponent)
 
         if (fractionalDigitsPresent != 0) {
-            _mantisa /= scale
+            _mantisa /= _scale
         }
         else {
-            _mantisa *= scale
+            _mantisa *= _scale
         }
 
         return _mantisa
