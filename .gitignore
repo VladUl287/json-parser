@@ -3,6 +3,9 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
+# jest tests
+coverage
+
 # dotenv files
 .env
 
