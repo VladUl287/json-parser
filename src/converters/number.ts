@@ -47,7 +47,6 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
     let numberOfTrailingZeros = 0
     let isDecimal = false
     let isNonZero = false
-    let hasNonZeroTail = false
 
     while (i < bytes.length) {
         const byte = bytes[i]
@@ -56,9 +55,6 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
             if (byte !== ZERO || isNonZero) {
                 if (digitsCount < maxDigitsCount) {
                     mantissa = mantissa * 10n + BigInt(byte - 48)
-                }
-                else if (byte != ZERO) {
-                    hasNonZeroTail = true
                 }
 
                 if (!isDecimal) {
@@ -105,27 +101,25 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
         i++
     }
 
-    let positiveExponent = Math.max(0, scale)
-    let integerDigitsPresent = Math.min(positiveExponent, digitsCount)
-    let fractionalDigitsPresent = digitsCount - integerDigitsPresent
+    const positiveExponent = Math.max(0, scale)
+    const integerDigitsPresent = Math.min(positiveExponent, digitsCount)
+    const fractionalDigitsPresent = digitsCount - integerDigitsPresent
 
     if (digitsCount <= 19) {
-        let exponent = scale - integerDigitsPresent - fractionalDigitsPresent
-        let fastExponent = Math.abs(exponent)
+        const exponent = scale - integerDigitsPresent - fractionalDigitsPresent
+        const fastExponent = Math.abs(exponent)
+        const resultScale = Math.pow(10, fastExponent)
 
         let _mantisa = Number(mantissa)
-        let _scale = Math.pow(10, fastExponent)
-
         if (fractionalDigitsPresent != 0) {
-            _mantisa /= _scale
+            _mantisa /= resultScale
         }
         else {
-            _mantisa *= _scale
+            _mantisa *= resultScale
         }
 
-        if (isNegative) {
+        if (isNegative)
             return -_mantisa
-        }
 
         return _mantisa
     }
