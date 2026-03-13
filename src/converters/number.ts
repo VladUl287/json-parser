@@ -20,7 +20,6 @@ export function convertNumber({ bytes, index, options }: ConvertState): Result<C
 
 export function parseNumberF64(bytes: Uint8Array): number | undefined {
     let isDigits = false
-    let isNegative = false
     let isDecimal = false
     let isExponent = false
     let isNotZero = false
@@ -28,6 +27,7 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
     let i = 0
     let mantissa = 0n
 
+    let isNegative = false
     if (bytes[i] === 45 || bytes[i] === 43) { // '-' or '+'
         isNegative = true
         i++
@@ -129,6 +129,10 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
         }
         else {
             _mantisa *= _scale
+        }
+
+        if (isNegative) {
+            return -_mantisa
         }
 
         return _mantisa
