@@ -1,13 +1,9 @@
-import { parseNumberF64, parseUTF8BytesToNumber } from "./src/converters/number"
-import { deserialize } from "./src/json"
-import { toMetadata } from "./src/metadata/metadata"
+import { parseNumberF64 } from "./src/converters/number"
 
-const numbers = ["15", "15.45", "15.45e3", "15.45e-3", "0.15", "-1", "-0.16", "-15.45e-3"]
+const numbers = ["15", "15.43", "15.47e3", "15.49e-3", "0.12", "-1", "-0.16", "-15.41e-3"]
 
 numbers.forEach(n => {
-    const bytes = new TextEncoder().encode(n)
-    console.log(Number(new TextDecoder().decode(bytes)))
-    console.log(parseNumberF64(bytes.subarray(0, bytes.length)))
+    console.log(Number(n), "|", parseNumberF64(new TextEncoder().encode(n)))
     console.log('------------------------------------------')
 })
 
