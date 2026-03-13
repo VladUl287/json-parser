@@ -19,38 +19,45 @@ export function convertNumber({ bytes, index, options }: ConvertState): Result<C
 }
 
 export function parseNumberF64(bytes: Uint8Array): number | undefined {
-    let isDigits = false
-    let isDecimal = false
-    let isExponent = false
-    let isNotZero = false
-
     let i = 0
-    let mantissa = 0n
+
+    const PLUS = 43
+    const MINUS = 45
 
     let isNegative = false
-    if (bytes[i] === 45 || bytes[i] === 43) { // '-' or '+'
+    if (bytes[i] === MINUS) {
         isNegative = true
         i++
     }
+    else if (bytes[i] === PLUS) {
+        i++
+    }
 
-    let digitsCount = 0
+    const isDigit = (byte: number) => byte >= 48 && byte <= 57
+
+    const ZERO = 48
+    const DOT = 46
+    const EXPONENT = 69
+    const EXPONENT_UPPER = 101
+
+    let mantissa = 0n
     let scale = 0
+    let digitsCount = 0
     let maxDigitsCount = 19
     let numberOfTrailingZeros = 0
+    let isDecimal = false
+    let isNonZero = false
     let hasNonZeroTail = false
-    let isExponentNegative = false
 
     while (i < bytes.length) {
         const byte = bytes[i]
 
-        if (byte >= 48 && byte <= 57) {
-            isDigits = true
-
-            if (byte !== 48 || isNotZero) {
+        if (isDigit(byte)) {
+            if (byte !== ZERO || isNonZero) {
                 if (digitsCount < maxDigitsCount) {
                     mantissa = mantissa * 10n + BigInt(byte - 48)
                 }
-                else if (byte != 48) {
+                else if (byte != ZERO) {
                     hasNonZeroTail = true
                 }
 
@@ -59,58 +66,43 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
                 }
 
                 if (digitsCount < maxDigitsCount) {
-                    if (byte === 48) {
-                        numberOfTrailingZeros++
-                    }
-                    else {
-                        numberOfTrailingZeros = 0
-                    }
+                    numberOfTrailingZeros += byte === ZERO ? 1 : 0
                 }
 
+                isNonZero = true
                 digitsCount++
-                isNotZero = true
             }
             else if (isDecimal) {
                 scale--
             }
         }
-
-        else if (byte === 46) { // '.'
+        else if (byte === DOT) {
             isDecimal = true
         }
+        else if (byte === EXPONENT || byte === EXPONENT_UPPER) {
+            i++
 
-        else if (byte === 69 || byte === 101) {
-            isExponent = true
+            let signExp = 1
+            if (bytes[i] === MINUS) {
+                signExp = -1
+                i++
+            }
+            else if (bytes[i] === PLUS) {
+                i++
+            }
+
+            let exponent = 0
+            while (isDigit(bytes[i])) {
+                exponent = exponent * 10 + (bytes[i] - 48)
+                i++
+            }
+
+            exponent *= signExp
+            scale += exponent
             break
         }
 
         i++
-    }
-
-    if (isDigits) {
-        if (isExponent) {
-            i++
-
-            if (bytes[i] === 45) { // '-'
-                isExponentNegative = true
-                i++
-            }
-
-            if (bytes[i] >= 48 && bytes[i] <= 57) {
-                let exponent = 0
-
-                while (bytes[i] >= 48 && bytes[i] <= 57) {
-                    exponent = exponent * 10 + (bytes[i] - 48)
-                    i++
-                }
-
-                if (isExponentNegative) {
-                    exponent = -exponent
-                }
-
-                scale += exponent
-            }
-        }
     }
 
     let positiveExponent = Math.max(0, scale)
