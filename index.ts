@@ -2,15 +2,17 @@ import { parseNumberF64, parseUTF8BytesToNumber } from "./src/converters/number"
 import { deserialize } from "./src/json"
 import { toMetadata } from "./src/metadata/metadata"
 
-const numbers = ["15", "15.45", "15.45e3", "15.45e-3", "0.15"]
+console.log(parseNumberF64(new TextEncoder().encode("15.45e-3")))
 
-numbers.forEach(n => {
-    const bytes = new TextEncoder().encode(n)
-    console.log(Number(new TextDecoder().decode(bytes)))
-    console.log(parseNumberF64(bytes.subarray(0, bytes.length)))
-    console.log(parseUTF8BytesToNumber(bytes, 0, bytes.length))
-    console.log('------------------------------------------')
-})
+// const numbers = ["15", "15.45", "15.45e3", "15.45e-3", "0.15"]
+
+// numbers.forEach(n => {
+//     const bytes = new TextEncoder().encode(n)
+//     console.log(Number(new TextDecoder().decode(bytes)))
+//     console.log(parseNumberF64(bytes.subarray(0, bytes.length)))
+//     console.log(parseUTF8BytesToNumber(bytes, 0, bytes.length))
+//     console.log('------------------------------------------')
+// })
 
 // let obj = {
 //     id: 15,
