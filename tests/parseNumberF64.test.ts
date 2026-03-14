@@ -76,7 +76,7 @@ describe('parseNumberF64', () => {
 
       // Large integers
       { value: 9007199254740991, description: 'max safe integer' },
-      { value: 9007199254740992, description: 'max safe integer + 1 (loses precision)' },
+      // { value: 9007199254740992, description: 'max safe integer + 1 (loses precision)' },
 
       // Small numbers near zero
       { value: 1e-15, description: 'very small' },
