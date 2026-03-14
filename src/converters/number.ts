@@ -18,6 +18,11 @@ export function convertNumber({ bytes, index, options }: ConvertState): Result<C
     })
 }
 
+const POS_POW10 = [1]
+for (let i = 1; i <= 308; i++) {
+    POS_POW10[i] = POS_POW10[i - 1] * 10
+}
+
 export function parseNumberF64(bytes: Uint8Array): number | undefined {
     let i = 0
 
@@ -101,27 +106,33 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
         i++
     }
 
-    const positiveExponent = Math.max(0, scale)
-    const integerDigitsPresent = Math.min(positiveExponent, digitsCount)
-    const fractionalDigitsPresent = digitsCount - integerDigitsPresent
-
     if (digitsCount <= 19) {
+        const positiveExponent = Math.max(0, scale)
+        const integerDigitsPresent = Math.min(positiveExponent, digitsCount)
+        const fractionalDigitsPresent = digitsCount - integerDigitsPresent
+
         const exponent = scale - integerDigitsPresent - fractionalDigitsPresent
         const fastExponent = Math.abs(exponent)
-        const resultScale = Math.pow(10, fastExponent)
 
-        let _mantisa = Number(mantissa)
-        if (fractionalDigitsPresent != 0) {
-            _mantisa /= resultScale
+        const MAX_SAFE_EXPONENT = 308
+
+        if (mantissa <= Number.MAX_SAFE_INTEGER && fastExponent <= MAX_SAFE_EXPONENT) {
+            const expScale = POS_POW10[fastExponent]
+
+            let result = Number(mantissa)
+            if (fractionalDigitsPresent != 0) {
+                result /= expScale
+            }
+            else {
+                result *= expScale
+            }
+
+            if (isNegative)
+                return -result
+
+            return result
         }
-        else {
-            _mantisa *= resultScale
-        }
 
-        if (isNegative)
-            return -_mantisa
-
-        return _mantisa
     }
 
     //slow path
