@@ -201,24 +201,20 @@ interface IFloatResult {
 }
 
 function computeFloatInternal(e: number, m: bigint, info: IFloatInfo): IFloatResult {
-    const minFastFloatDecimalExponent = -342
-    if (m === 0n || e < minFastFloatDecimalExponent) {
+    if (m === 0n || e < info.minFastFloatDecimalExponent) {
         return { exponent: 0, mantissa: 0n }
     }
 
     if (e > info.maxFastFloatDecimalExponent) {
-        return {
-            exponent: info.infinityExponent,
-            mantissa: 0n
-        }
+        return { exponent: info.infinityExponent, mantissa: 0n }
     }
 
     // Normalize the mantissa - make the most significant bit 1
     let lz = clz(m)
-    let normalizedW = m << BigInt(lz)
+    let normalizedM = m << BigInt(lz)
 
     // Compute approximate product
-    const product = computeProductApproximation(info.denormalMantissaBits + 3, e, normalizedW)
+    const product = computeProductApproximation(info.denormalMantissaBits + 3, e, normalizedM)
 
     // Check for potential precision issues
     if (product.low === 0xFFFFFFFFFFFFFFFFn) {
@@ -282,19 +278,19 @@ function computeFloatInternal(e: number, m: bigint, info: IFloatInfo): IFloatRes
     return { exponent, mantissa }
 }
 
-function computeProductApproximation(bitPrecision: number, q: number, w: bigint): { high: bigint; low: bigint } {
-    const index = 2 * (q - (-342));
+function computeProductApproximation(bitPrecision: number, e: number, m: bigint): { high: bigint; low: bigint } {
+    const index = 2 * (e - (-342))
     const pow_high = POW5_128[index]
     const pow_low = POW5_128[index + 1]
 
-    let { high, low } = multiply128(w, pow_high)
+    let { high, low } = multiply128(m, pow_high)
 
     const precisionMask = bitPrecision < 64
         ? (0xFFFFFFFFFFFFFFFFn >> BigInt(bitPrecision))
-        : 0xFFFFFFFFFFFFFFFFn;
+        : 0xFFFFFFFFFFFFFFFFn
 
     if ((high & precisionMask) === precisionMask) {
-        const { high: high2 } = multiply128(w, pow_low)
+        const { high: high2 } = multiply128(m, pow_low)
         low += high2
 
         if (high2 > low)
