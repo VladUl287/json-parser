@@ -1,24 +1,43 @@
+function formatTime(nanoseconds) {
+    const units = [
+        { threshold: 1, unit: 'ns', divisor: 1, precision: 0 },
+        { threshold: 1000, unit: 'µs', divisor: 1000, precision: 2 },
+        { threshold: 1000 * 1000, unit: 'ms', divisor: 1000 * 1000, precision: 2 },
+        { threshold: 1000 * 1000 * 1000, unit: 's', divisor: 1000 * 1000 * 1000, precision: 2 }
+    ];
+
+    for (let i = units.length - 1; i >= 0; i--) {
+        if (nanoseconds >= units[i].threshold) {
+            const value = nanoseconds / units[i].divisor;
+            return `${value.toFixed(units[i].precision)} ${units[i].unit}`;
+        }
+    }
+
+    return `${nanoseconds.toFixed(0)} ns`;
+}
+
 export function formatBenchmarkResults(suite) {
     const results = []
     let fastest = null
 
     suite.forEach((bench) => {
         if (bench.stats) {
-            const mean = bench.stats.mean * 1000 // Convert to milliseconds
-            const error = bench.stats.moe * 1000 // Margin of error
-            const ops = Math.round(1 / (bench.stats.mean))
+            const meanNs = bench.stats.mean * 1e9
+            const errorNs = bench.stats.moe * 1e9
+            const stdDevNs = bench.stats.deviation * 1e9
+            const medianNs = bench.stats.median * 1e9
 
             results.push({
                 name: bench.name,
-                mean: mean,
-                error: error,
-                ops: ops,
-                stdDev: bench.stats.deviation * 1000,
-                samples: bench.stats.sample.length
-            })
+                mean: meanNs,
+                error: errorNs,
+                stdDev: stdDevNs,
+                median: medianNs,
+                ops: Math.round(1 / bench.stats.mean)
+            });
 
-            if (!fastest || mean < fastest.mean) {
-                fastest = { name: bench.name, mean: mean }
+            if (!fastest || meanNs < fastest.mean) {
+                fastest = { name: bench.name, mean: meanNs }
             }
         }
     })
@@ -43,20 +62,19 @@ export function formatBenchmarkResults(suite) {
 
     // Rows
     results.forEach(r => {
-        const ratio = r.mean / fastest.mean
         const marker = r.name === fastest.name ? '*' : ' '
 
         console.log(
             marker + ' ' + r.name.padEnd(23) +
-            (r.mean.toFixed(3) + ' ms').padEnd(15) +
-            ('±' + r.error.toFixed(3) + ' ms').padEnd(15) +
-            r.stdDev.toFixed(3).padEnd(15) +
+            formatTime(r.mean).padEnd(15) +
+            formatTime(r.error).padEnd(15) +
+            formatTime(r.stdDev).padEnd(15) +
             r.ops.toLocaleString().padEnd(15)
         )
     })
 
     console.log('-'.repeat(80))
-    console.log(`* Fastest: ${fastest.name} (${(fastest.mean).toFixed(3)} ms)`)
+    console.log(`* Fastest: ${fastest.name} (${formatTime(fastest.mean)})`)
 
     // Ratio comparison
     console.log('\nRatio Comparison:')
