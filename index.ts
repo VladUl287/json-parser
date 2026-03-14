@@ -1,7 +1,7 @@
 import { parseNumberF64 } from "./src/converters/number"
 
-const number = Math.SQRT2
-console.log(Math.SQRT2, parseNumberF64(new TextEncoder().encode(number.toString())))
+const encoder = new TextEncoder()
+parseNumberF64(encoder.encode((1 / 7).toString()))
 
 // let obj = {
 //     id: 15,

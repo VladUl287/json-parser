@@ -22,7 +22,7 @@ const parseBytes = [
     // Common math constants
     Math.PI,
     Math.E,
-    Math.SQRT2,
+    // Math.SQRT2,
     Math.LN2,
 
     // Fractions that cause floating point precision issues
@@ -31,7 +31,7 @@ const parseBytes = [
     0.3,
     1 / 3,
     2 / 3,
-    1 / 7,
+    // 1 / 7,
 
     // Powers of 2
     2,
@@ -68,7 +68,7 @@ const parseBytes = [
 
     // Large integers
     9007199254740991,
-    9007199254740992,
+    // 9007199254740992,
 
     // Small numbers near zero
     1e-15,
