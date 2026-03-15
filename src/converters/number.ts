@@ -48,7 +48,7 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
     let mantissa = 0n
     let scale = 0
     let digitsCount = 0
-    let maxDigitsCount = 19
+    let maxDigitsCount = 756
     let numberOfTrailingZeros = 0
     let isDecimal = false
     let isNonZero = false
@@ -138,25 +138,35 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
     }
 
     return numberToFloatingPointBitsSlow(
-        mantissa, positiveExponent,
+        mantissa, digitsCount, scale, positiveExponent,
         integerDigitsPresent, fractionalDigitsPresent, doublePrecisionFormat,
     )
 }
 
 function numberToFloatingPointBitsSlow(
     mantissa: bigint,
+    totalDigits: number,
+    scale: number,
     positiveExponent: number,
     integerDigitsPresent: number,
     fractionalDigitsPresent: number,
     format: FloatFormatInfo
 ): number {
-    const { normalMantissaBits, infinityBits, zeroBits, denormalMantissaBits } = format
-    const overflowDecimalExponent = 308
+    const {
+        normalMantissaBits, infinityBits, zeroBits, denormalMantissaBits,
+        overflowDecimalExponent
+    } = format
 
     const requiredBitsOfPrecision = normalMantissaBits + 1;
 
-    let integerValue = mantissa;
     const integerDigitsMissing = positiveExponent - integerDigitsPresent
+
+    const integerLastIndex = integerDigitsPresent
+    const fractionalFirstIndex = integerLastIndex
+    const fractionalLastIndex = totalDigits
+
+    let integerValue = mantissa / BigInt(Math.pow(10, fractionalLastIndex - fractionalFirstIndex)) //get integer part first
+    // let integerValue = mantissa
 
     if (integerDigitsMissing > 0) {
         if (integerDigitsMissing > overflowDecimalExponent) {
@@ -174,19 +184,92 @@ function numberToFloatingPointBitsSlow(
             integerBitsOfPrecision,
             fractionalDigitsPresent !== 0,
             denormalMantissaBits
-        );
+        )
     }
 
-    if (integerBitsOfPrecision === 0 && fractionalDigitsPresent > overflowDecimalExponent) {
+    let fractionalDenominatorExponent = fractionalDigitsPresent
+
+    if (scale < 0) {
+        fractionalDenominatorExponent += -scale
+    }
+
+    if (integerBitsOfPrecision === 0 && (fractionalDenominatorExponent - totalDigits) > overflowDecimalExponent) {
         return zeroBits
     }
 
-    return convertBigIntegerToFloatingPointBits(
-        integerValue,
-        integerBitsOfPrecision,
-        fractionalDigitsPresent !== 0,
-        denormalMantissaBits,
+    const frac = mantissa.toString().substring(fractionalLastIndex - (fractionalLastIndex - fractionalFirstIndex))
+    let fractionalNumerator = BigInt(frac)
+
+    if (fractionalNumerator === 0n) {
+        return convertBigIntegerToFloatingPointBits(
+            integerValue,
+            integerBitsOfPrecision,
+            fractionalDigitsPresent !== 0,
+            denormalMantissaBits
+        )
+    }
+
+    let fractionalDenominator = 10n ** BigInt(fractionalDenominatorExponent)
+
+    const fractionalNumeratorBits = countSignificantBits(fractionalNumerator)
+    const fractionalDenominatorBits = countSignificantBits(fractionalDenominator)
+
+    let fractionalShift = 0
+
+    if (fractionalDenominatorBits > fractionalNumeratorBits) {
+        fractionalShift = fractionalDenominatorBits - fractionalNumeratorBits
+    }
+
+    if (fractionalShift > 0) {
+        fractionalNumerator <<= BigInt(fractionalShift)
+    }
+
+    const requiredFractionalBitsOfPrecision = requiredBitsOfPrecision - integerBitsOfPrecision;
+    let remainingBitsOfPrecisionRequired = requiredFractionalBitsOfPrecision;
+
+    if (integerBitsOfPrecision > 0) {
+
+
+        remainingBitsOfPrecisionRequired -= fractionalShift;
+    }
+
+    let fractionalExponent = fractionalShift
+
+    if (fractionalNumerator < fractionalDenominator) {
+        fractionalExponent++
+    }
+
+    fractionalNumerator = fractionalNumerator << BigInt(remainingBitsOfPrecisionRequired)
+
+    let [fractionalMantissa, fractionalRemainder] = divRem(fractionalNumerator, fractionalDenominator)
+
+    const fractionalMantissaBits = countSignificantBits1(fractionalMantissa)
+
+    if (fractionalMantissaBits > requiredFractionalBitsOfPrecision) {
+        const shift = (fractionalMantissaBits - requiredFractionalBitsOfPrecision)
+        fractionalMantissa >>= shift
+    }
+
+    const completeMantissa = (integerValue << BigInt(requiredFractionalBitsOfPrecision)) + BigInt(fractionalMantissa)
+    const finalExponent = (integerBitsOfPrecision > 0) ? (integerBitsOfPrecision) - 2 : -(fractionalExponent) - 1
+
+    return assembleFloatingPointBits(
+        completeMantissa,
+        finalExponent,
+        false,
+        doublePrecisionFormat
     )
+}
+
+function divRem(dividend, divisor) {
+    if (divisor === 0n) {
+        throw new RangeError("Division by zero");
+    }
+
+    const quotient = dividend / divisor;
+    const remainder = dividend % divisor;
+
+    return [quotient, remainder];
 }
 
 function convertBigIntegerToFloatingPointBits(
@@ -232,6 +315,7 @@ interface FloatFormatInfo {
     denormalMantissaMask: bigint;
     infinityBits: number;
     zeroBits: number;
+    overflowDecimalExponent: number
 }
 
 function assembleFloatingPointBits(
@@ -337,7 +421,8 @@ const doublePrecisionFormat: FloatFormatInfo = {
     normalMantissaMask: (1n << 53n) - 1n,
     denormalMantissaMask: (1n << 52n) - 1n,
     infinityBits: 0x7FF0000000000000,
-    zeroBits: 0
+    zeroBits: 0,
+    overflowDecimalExponent: 308
 }
 
 export const DefaultFloatInfo: IFloatInfo = {
@@ -531,6 +616,11 @@ function multiply128(a: bigint, b: bigint): { high: bigint; low: bigint } {
 
 function countSignificantBits(value: bigint): number {
     if (value === 0n) return 0
+    return value.toString(2).length
+}
+
+function countSignificantBits1(value: number): number {
+    if (value === 0) return 0
     return value.toString(2).length
 }
 
