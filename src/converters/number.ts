@@ -373,17 +373,9 @@ function assembleFloatingPointBits(
     }
 
     mantissa = mantissa & format.denormalMantissaMask
-
-    const shiftedExponent = BigInt(exponent + format.exponentBias) << BigInt(format.denormalMantissaBits);
-    const bitPattern = shiftedExponent | mantissa
-
-    const buffer = new ArrayBuffer(8)
-    const view = new DataView(buffer)
-    view.setBigUint64(0, bitPattern, false)
-    return view.getFloat64(0, false)
-
-    // const normalizedMantissa = 1 + Number(mantissa) / Math.pow(2, 52)
-    // return normalizedMantissa * Math.pow(2, exponent)
+    
+    const normalizedMantissa = 1 + Number(mantissa) / Math.pow(2, 52)
+    return normalizedMantissa * Math.pow(2, exponent)
 }
 
 function rightShiftWithRounding(
