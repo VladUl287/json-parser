@@ -1,7 +1,7 @@
 import { parseNumberF64 } from "./src/converters/number"
 
 const encoder = new TextEncoder()
-parseNumberF64(encoder.encode((1 / 7).toString()))
+console.log(1 / 7, parseNumberF64(encoder.encode((1 / 7).toString())))
 
 // let obj = {
 //     id: 15,
