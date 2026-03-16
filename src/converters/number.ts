@@ -25,15 +25,25 @@ for (let i = 1; i <= 308; i++) {
 
 const textDecoder = new TextDecoder()
 
+const BIG_POW_10 = [10n]
+for (let i = 1; i <= 15; i++) {
+    BIG_POW_10[i] = BIG_POW_10[i - 1] * 10n
+}
+
 export function parseNumberF64(bytes: Uint8Array): number | undefined {
     let i = 0
 
     const PLUS = 43
     const MINUS = 45
 
-    let isNegative = false
+    const STATE_NEGATIVE = 0x01  // bit 0
+    const STATE_NONZERO = 0x02  // bit 1
+    const STATE_DECIMAL = 0x04  // bit 2
+
+    let state = 0
+
     if (bytes[i] === MINUS) {
-        isNegative = true
+        state ^= STATE_NEGATIVE
         i++
     }
     else if (bytes[i] === PLUS) {
@@ -52,8 +62,6 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
     let digitsCount = 0
     let maxDigitsCount = 756
     let numberOfTrailingZeros = 0
-    let isDecimal = false
-    let isNonZero = false
 
     const MAX_SAFE_DIGITS = 15
     const MAX_SAFE_VALUE = 10000_0000_0000_000n
@@ -65,7 +73,7 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
         const byte = bytes[i]
 
         if (isDigit(byte)) {
-            if (byte !== ZERO || isNonZero) {
+            if (byte !== ZERO || (state & STATE_NONZERO)) {
                 if (digitsCount < maxDigitsCount) {
                     if (digitsCountTemp === MAX_SAFE_DIGITS) {
                         mantissa = mantissa * MAX_SAFE_VALUE + BigInt(mantissaTemp)
@@ -75,25 +83,23 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
 
                     mantissaTemp = mantissaTemp * 10 + (byte & 0x0F)
                     digitsCountTemp++
-                }
 
-                if (!isDecimal) {
-                    scale++
-                }
-
-                if (digitsCount < maxDigitsCount) {
                     numberOfTrailingZeros += byte === ZERO ? 1 : 0
                 }
 
-                isNonZero = true
+                if ((state & STATE_DECIMAL) === 0) {
+                    scale++
+                }
+
+                state ^= STATE_NONZERO
                 digitsCount++
             }
-            else if (isDecimal) {
+            else if (state & STATE_DECIMAL) {
                 scale--
             }
         }
         else if (byte === DOT) {
-            isDecimal = true
+            state ^= STATE_DECIMAL
         }
         else if (byte === EXPONENT || byte === EXPONENT_UPPER) {
             i++
@@ -121,8 +127,9 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
         i++
     }
 
-    if (digitsCountTemp > 0) {
-        mantissa = mantissa * BigInt(10 ** digitsCountTemp) + BigInt(mantissaTemp)
+    if (digitsCountTemp > 0 && mantissa > 0) {
+        mantissa = mantissa * BIG_POW_10[digitsCountTemp] + BigInt(mantissaTemp)
+        digitsCountTemp = 0
     }
 
     const positiveExponent = Math.max(0, scale)
@@ -130,16 +137,15 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
     const fractionalDigitsPresent = digitsCount - integerDigitsPresent
 
     if (digitsCount <= 19) {
-
         const exponent = scale - integerDigitsPresent - fractionalDigitsPresent
         const fastExponent = Math.abs(exponent)
 
         const MAX_SAFE_EXPONENT = 308
 
-        if (mantissa <= Number.MAX_SAFE_INTEGER && fastExponent <= MAX_SAFE_EXPONENT) {
+        if (digitsCountTemp > 0 && fastExponent <= MAX_SAFE_EXPONENT) {
             const expScale = POS_POW10[fastExponent]
 
-            let result = Number(mantissa)
+            let result = mantissaTemp
             if (fractionalDigitsPresent != 0) {
                 result /= expScale
             }
@@ -147,11 +153,28 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
                 result *= expScale
             }
 
-            if (isNegative)
+            if (state & STATE_NEGATIVE)
                 return -result
 
             return result
         }
+        else
+            if (mantissa <= Number.MAX_SAFE_INTEGER && fastExponent <= MAX_SAFE_EXPONENT) {
+                const expScale = POS_POW10[fastExponent]
+
+                let result = Number(mantissa)
+                if (fractionalDigitsPresent != 0) {
+                    result /= expScale
+                }
+                else {
+                    result *= expScale
+                }
+
+                if (state & STATE_NEGATIVE)
+                    return -result
+
+                return result
+            }
 
         return computeFloat(exponent, mantissa, DefaultFloatInfo)
     }
