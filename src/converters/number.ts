@@ -58,31 +58,34 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
     const EXPONENT_UPPER = 101
 
     let mantissa = 0n
-    let scale = 0
+    let mantissaSmall = 0
+
     let digitsCount = 0
-    let maxDigitsCount = 756
+    let digitsCountSmall = 0
+
+    let scale = 0
     let numberOfTrailingZeros = 0
 
-    const MAX_SAFE_DIGITS = 15
-    const MAX_SAFE_VALUE = 10000_0000_0000_000n
+    const MAX_DIGITS_COUNT = 324
 
-    let mantissaTemp = 0
-    let digitsCountTemp = 0
+    const MAX_DEFAULT_DIGITS = 19
+    const MAX_SMALL_DIGITS = 15
+    const MAX_SMALL_VALUE = 10000_0000_0000_000n
 
     while (i < bytes.length) {
         const byte = bytes[i]
 
         if (isDigit(byte)) {
             if (byte !== ZERO || (state & STATE_NONZERO)) {
-                if (digitsCount < maxDigitsCount) {
-                    if (digitsCountTemp === MAX_SAFE_DIGITS) {
-                        mantissa = mantissa * MAX_SAFE_VALUE + BigInt(mantissaTemp)
-                        digitsCountTemp = 0
-                        mantissaTemp = 0
+                if (digitsCount < MAX_DIGITS_COUNT) {
+                    if (digitsCountSmall === MAX_SMALL_DIGITS) {
+                        mantissa = mantissa * MAX_SMALL_VALUE + BigInt(mantissaSmall)
+                        digitsCountSmall = 0
+                        mantissaSmall = 0
                     }
 
-                    mantissaTemp = mantissaTemp * 10 + (byte & 0x0F)
-                    digitsCountTemp++
+                    mantissaSmall = mantissaSmall * 10 + (byte & 0x0F)
+                    digitsCountSmall++
 
                     numberOfTrailingZeros += byte === ZERO ? 1 : 0
                 }
@@ -127,25 +130,39 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
         i++
     }
 
-    if (digitsCountTemp > 0 && mantissa > 0) {
-        mantissa = mantissa * BIG_POW_10[digitsCountTemp] + BigInt(mantissaTemp)
-        digitsCountTemp = 0
+    if (digitsCount > MAX_SMALL_DIGITS && digitsCountSmall > 0) {
+        mantissa = mantissa * BIG_POW_10[digitsCountSmall] + BigInt(mantissaSmall)
     }
 
     const positiveExponent = Math.max(0, scale)
     const integerDigitsPresent = Math.min(positiveExponent, digitsCount)
     const fractionalDigitsPresent = digitsCount - integerDigitsPresent
 
-    if (digitsCount <= 19) {
+    if (digitsCount <= MAX_DEFAULT_DIGITS) {
         const exponent = scale - integerDigitsPresent - fractionalDigitsPresent
         const fastExponent = Math.abs(exponent)
 
         const MAX_SAFE_EXPONENT = 308
 
-        if (digitsCountTemp > 0 && fastExponent <= MAX_SAFE_EXPONENT) {
+        if (digitsCount <= MAX_SMALL_DIGITS && fastExponent <= MAX_SAFE_EXPONENT) {
             const expScale = POS_POW10[fastExponent]
 
-            let result = mantissaTemp
+            if (fractionalDigitsPresent !== 0) {
+                mantissaSmall /= expScale
+            }
+            else {
+                mantissaSmall *= expScale
+            }
+
+            if (state & STATE_NEGATIVE)
+                return -mantissaSmall
+
+            return mantissaSmall
+        }
+        else if (mantissa <= Number.MAX_SAFE_INTEGER && fastExponent <= MAX_SAFE_EXPONENT) {
+            const expScale = POS_POW10[fastExponent]
+
+            let result = Number(mantissa)
             if (fractionalDigitsPresent != 0) {
                 result /= expScale
             }
@@ -158,23 +175,6 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
 
             return result
         }
-        else
-            if (mantissa <= Number.MAX_SAFE_INTEGER && fastExponent <= MAX_SAFE_EXPONENT) {
-                const expScale = POS_POW10[fastExponent]
-
-                let result = Number(mantissa)
-                if (fractionalDigitsPresent != 0) {
-                    result /= expScale
-                }
-                else {
-                    result *= expScale
-                }
-
-                if (state & STATE_NEGATIVE)
-                    return -result
-
-                return result
-            }
 
         return computeFloat(exponent, mantissa, DefaultFloatInfo)
     }
@@ -644,12 +644,6 @@ function multiply128(a: bigint, b: bigint): { high: bigint; low: bigint } {
     let high = highHigh + (lowHigh >> 32n) + (highLow >> 32n) + carry
 
     return { high, low }
-}
-
-function getDigitAtIndex(num, index) {
-    const totalDigits = num.toString().length;
-    const divisor = 10n ** BigInt(totalDigits - index - 1);
-    return Number((num / divisor) % 10n);
 }
 
 function getDigitsFromBigInt(num, startIndex, length) {
