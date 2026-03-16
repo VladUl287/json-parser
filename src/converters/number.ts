@@ -94,7 +94,7 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
                     scale++
                 }
 
-                state ^= STATE_NONZERO
+                state |= STATE_NONZERO
                 digitsCount++
             }
             else if (state & STATE_DECIMAL) {
@@ -102,7 +102,7 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
             }
         }
         else if (byte === DOT) {
-            state ^= STATE_DECIMAL
+            state |= STATE_DECIMAL
         }
         else if (byte === EXPONENT || byte === EXPONENT_UPPER) {
             i++
