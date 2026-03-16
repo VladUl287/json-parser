@@ -23,6 +23,8 @@ for (let i = 1; i <= 308; i++) {
     POS_POW10[i] = POS_POW10[i - 1] * 10
 }
 
+const textDecoder = new TextDecoder()
+
 export function parseNumberF64(bytes: Uint8Array): number | undefined {
     let i = 0
 
@@ -373,7 +375,7 @@ function assembleFloatingPointBits(
     }
 
     mantissa = mantissa & format.denormalMantissaMask
-    
+
     const normalizedMantissa = 1 + Number(mantissa) / Math.pow(2, 52)
     return normalizedMantissa * Math.pow(2, exponent)
 }

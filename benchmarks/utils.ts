@@ -43,7 +43,7 @@ export function formatBenchmarkResults(suite) {
     })
 
     // Sort by mean (fastest first)
-    results.sort((a, b) => a.mean - b.mean)
+    // results.sort((a, b) => a.mean - b.mean)
 
     // Print table
     console.log('\n' + '='.repeat(80))
@@ -77,12 +77,12 @@ export function formatBenchmarkResults(suite) {
     console.log(`* Fastest: ${fastest.name} (${formatTime(fastest.mean)})`)
 
     // Ratio comparison
-    console.log('\nRatio Comparison:')
-    results.forEach(r => {
-        const ratio = Number((r.mean / fastest.mean).toFixed(2))
-        const bar = '█'.repeat(Math.round(ratio * 10))
-        console.log(`${r.name.padEnd(25)} ${ratio}x ${bar}`)
-    })
+    // console.log('\nRatio Comparison:')
+    // results.forEach(r => {
+    //     const ratio = Number((r.mean / fastest.mean).toFixed(2))
+    //     const bar = '█'.repeat(Math.round(ratio * 10))
+    //     console.log(`${r.name.padEnd(25)} ${ratio}x ${bar}`)
+    // })
 
     return results
 }
