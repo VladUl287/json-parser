@@ -55,13 +55,26 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
     let isDecimal = false
     let isNonZero = false
 
+    const MAX_SAFE_DIGITS = 15
+    const MAX_SAFE_VALUE = 10000_0000_0000_000n
+
+    let mantissaTemp = 0
+    let digitsCountTemp = 0
+
     while (i < bytes.length) {
         const byte = bytes[i]
 
         if (isDigit(byte)) {
             if (byte !== ZERO || isNonZero) {
                 if (digitsCount < maxDigitsCount) {
-                    mantissa = mantissa * 10n + BigInt(byte - 48)
+                    if (digitsCountTemp === MAX_SAFE_DIGITS) {
+                        mantissa = mantissa * MAX_SAFE_VALUE + BigInt(mantissaTemp)
+                        digitsCountTemp = 0
+                        mantissaTemp = 0
+                    }
+
+                    mantissaTemp = mantissaTemp * 10 + (byte & 0x0F)
+                    digitsCountTemp++
                 }
 
                 if (!isDecimal) {
@@ -108,6 +121,10 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
         i++
     }
 
+    if (digitsCountTemp > 0) {
+        mantissa = mantissa * BigInt(10 ** digitsCountTemp) + BigInt(mantissaTemp)
+    }
+
     const positiveExponent = Math.max(0, scale)
     const integerDigitsPresent = Math.min(positiveExponent, digitsCount)
     const fractionalDigitsPresent = digitsCount - integerDigitsPresent
@@ -147,7 +164,7 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
 
 function numberToFloatingPointBitsSlow(
     mantissa: bigint,
-    totalDigits: number,
+    digitsCount: number,
     scale: number,
     positiveExponent: number,
     integerDigitsPresent: number,
@@ -155,7 +172,7 @@ function numberToFloatingPointBitsSlow(
     format: FloatFormatInfo
 ): number {
     const {
-        normalMantissaBits, infinityBits, zeroBits, denormalMantissaBits,
+        normalMantissaBits, zeroBits, denormalMantissaBits,
         overflowDecimalExponent
     } = format
 
@@ -165,14 +182,14 @@ function numberToFloatingPointBitsSlow(
 
     const integerLastIndex = integerDigitsPresent
     const fractionalFirstIndex = integerLastIndex
-    const fractionalLastIndex = totalDigits
+    const fractionalLastIndex = digitsCount
 
     let integerValue = mantissa / BigInt(Math.pow(10, fractionalLastIndex - fractionalFirstIndex)) //get integer part first
     // let integerValue = mantissa
 
     if (integerDigitsMissing > 0) {
         if (integerDigitsMissing > overflowDecimalExponent) {
-            return infinityBits
+            return Infinity
         }
 
         integerValue = integerValue * 10n ** BigInt(integerDigitsMissing)
@@ -192,11 +209,11 @@ function numberToFloatingPointBitsSlow(
     let fractionalDenominatorExponent = fractionalDigitsPresent
 
     if (scale < 0) {
-        fractionalDenominatorExponent += -scale
+        fractionalDenominatorExponent -= scale
     }
 
-    if (integerBitsOfPrecision === 0 && (fractionalDenominatorExponent - totalDigits) > overflowDecimalExponent) {
-        return zeroBits
+    if (integerBitsOfPrecision === 0 && (fractionalDenominatorExponent - digitsCount) > overflowDecimalExponent) {
+        return 0
     }
 
     const frac = mantissa.toString().substring(fractionalLastIndex - (fractionalLastIndex - fractionalFirstIndex))
@@ -306,20 +323,6 @@ function convertBigIntegerToFloatingPointBits(
     )
 }
 
-interface FloatFormatInfo {
-    normalMantissaBits: number;
-    denormalMantissaBits: number;
-    exponentBias: number;
-    maxBinaryExponent: number;
-    minBinaryExponent: number;
-    exponentBits: number;
-    normalMantissaMask: bigint;
-    denormalMantissaMask: bigint;
-    infinityBits: number;
-    zeroBits: number;
-    overflowDecimalExponent: number
-}
-
 function assembleFloatingPointBits(
     initialMantissa: bigint,
     initialExponent: number,
@@ -330,11 +333,11 @@ function assembleFloatingPointBits(
     const normalMantissaShift = format.normalMantissaBits - initialMantissaBits;
     let normalExponent = initialExponent - normalMantissaShift;
 
-    let mantissa = initialMantissa;
-    let exponent = normalExponent;
+    let mantissa = initialMantissa
+    let exponent = normalExponent
 
     if (normalExponent > format.maxBinaryExponent) {
-        return format.infinityBits;
+        return Infinity
     }
     else if (normalExponent < format.minBinaryExponent) {
         const denormalMantissaShift = normalMantissaShift + normalExponent + format.exponentBias - 1;
@@ -365,7 +368,7 @@ function assembleFloatingPointBits(
                 exponent++;
 
                 if (exponent > format.maxBinaryExponent) {
-                    return format.infinityBits;
+                    return Infinity
                 }
             }
         }
@@ -405,6 +408,19 @@ function rightShiftWithRounding(
     return result;
 }
 
+interface FloatFormatInfo {
+    normalMantissaBits: number
+    denormalMantissaBits: number
+    exponentBias: number
+    maxBinaryExponent: number
+    minBinaryExponent: number
+    exponentBits: number
+    normalMantissaMask: bigint
+    denormalMantissaMask: bigint
+    zeroBits: number
+    overflowDecimalExponent: number
+}
+
 const doublePrecisionFormat: FloatFormatInfo = {
     normalMantissaBits: 53,      // 52 stored + 1 hidden
     denormalMantissaBits: 52,
@@ -414,7 +430,6 @@ const doublePrecisionFormat: FloatFormatInfo = {
     exponentBits: 11,
     normalMantissaMask: (1n << 53n) - 1n,
     denormalMantissaMask: (1n << 52n) - 1n,
-    infinityBits: 0x7FF0000000000000,
     zeroBits: 0,
     overflowDecimalExponent: 308
 }
@@ -606,6 +621,21 @@ function multiply128(a: bigint, b: bigint): { high: bigint; low: bigint } {
     let high = highHigh + (lowHigh >> 32n) + (highLow >> 32n) + carry
 
     return { high, low }
+}
+
+function getDigitAtIndex(num, index) {
+    const totalDigits = num.toString().length;
+    const divisor = 10n ** BigInt(totalDigits - index - 1);
+    return Number((num / divisor) % 10n);
+}
+
+function getDigitsFromBigInt(num, startIndex, length) {
+    const totalDigits = num.toString().length
+
+    const divisor = 10n ** BigInt(totalDigits - startIndex - length)
+    const mask = 10n ** BigInt(length)
+
+    return (num / divisor) % mask
 }
 
 function countSignificantBits(value: bigint): number {
