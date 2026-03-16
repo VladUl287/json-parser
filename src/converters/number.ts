@@ -23,9 +23,7 @@ for (let i = 1; i <= 308; i++) {
     POS_POW10[i] = POS_POW10[i - 1] * 10
 }
 
-const textDecoder = new TextDecoder()
-
-const BIG_POW_10 = [10n]
+const BIG_POW_10 = [1n]
 for (let i = 1; i <= 15; i++) {
     BIG_POW_10[i] = BIG_POW_10[i - 1] * 10n
 }
