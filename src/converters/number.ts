@@ -491,10 +491,6 @@ export function computeFloat(exponent: number, mantissa: bigint, floatInfo: IFlo
     if (result.exponent > 0) {
         const mantissaNum = Number(result.mantissa & floatInfo.denormalMantissaMask)
 
-        if (result.exponent === 0 && mantissaNum === 0) {
-            return 0
-        }
-
         if (result.exponent === floatInfo.infinityExponent && mantissaNum === 0) {
             return Infinity
         }
@@ -591,53 +587,25 @@ function computeFloatInternal(e: number, m: bigint, info: IFloatInfo): IFloatRes
 }
 
 function computeProductApproximation(bitPrecision: number, e: number, m: bigint): { high: bigint; low: bigint } {
-    const index = 2 * (e - (-342))
-    const pow_high = POW5_128[index]
-    const pow_low = POW5_128[index + 1]
+    const index = 2 * (e + 342)
 
-    let { high, low } = multiply128(m, pow_high)
+    const product = m * POW5_128[index]
+    let low = product & 0xFFFFFFFFFFFFFFFFn
+    let high = product >> 64n
 
     const precisionMask = bitPrecision < 64
         ? (0xFFFFFFFFFFFFFFFFn >> BigInt(bitPrecision))
         : 0xFFFFFFFFFFFFFFFFn
 
     if ((high & precisionMask) === precisionMask) {
-        const { high: high2 } = multiply128(m, pow_low)
-        low += high2
+        const high2 = (m * POW5_128[index + 1]) >> 64n;
 
-        if (high2 > low)
-            high += 1n
+        const newLow = low + high2;
+        return {
+            high: high + (newLow < low ? 1n : 0n),
+            low: newLow
+        }
     }
-
-    return { high, low }
-}
-
-function multiply128(a: bigint, b: bigint): { high: bigint; low: bigint } {
-    const aLow = a & 0xFFFFFFFFn
-    const aHigh = a >> 32n
-    const bLow = b & 0xFFFFFFFFn
-    const bHigh = b >> 32n
-
-    const lowLow = aLow * bLow
-    const lowHigh = aLow * bHigh
-    const highLow = aHigh * bLow
-    const highHigh = aHigh * bHigh
-
-    let low = lowLow;
-    let carry = 0n;
-
-    // Add lowHigh shifted by 32
-    let temp = (low >> 32n) + (lowHigh & 0xFFFFFFFFn)
-    low = (low & 0xFFFFFFFFn) | ((temp & 0xFFFFFFFFn) << 32n)
-    carry = temp >> 32n
-
-    // Add highLow shifted by 32
-    temp = (low >> 32n) + (highLow & 0xFFFFFFFFn) + carry
-    low = (low & 0xFFFFFFFFn) | ((temp & 0xFFFFFFFFn) << 32n)
-    carry = temp >> 32n
-
-    // Calculate high
-    let high = highHigh + (lowHigh >> 32n) + (highLow >> 32n) + carry
 
     return { high, low }
 }
