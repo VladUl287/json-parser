@@ -174,7 +174,9 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
             return result
         }
 
-        return computeFloat(exponent, mantissa, DefaultFloatInfo)
+        const float = computeFloat(exponent, mantissa, DefaultFloatInfo)
+        if (float)
+            return float
     }
 
     return numberToFloatingPointBitsSlow(
@@ -442,6 +444,22 @@ interface FloatFormatInfo {
     overflowDecimalExponent: number
 }
 
+interface IFloatInfo {
+    denormalMantissaBits: number
+    minFastFloatDecimalExponent: number
+    maxFastFloatDecimalExponent: number
+    infinityExponent: number
+    minExponentRoundToEven: number
+    maxExponentRoundToEven: number
+    maxBinaryExponent: number
+    denormalMantissaMask: bigint
+}
+
+interface IFloatResult {
+    exponent: number
+    mantissa: bigint
+}
+
 const doublePrecisionFormat: FloatFormatInfo = {
     normalMantissaBits: 53,      // 52 stored + 1 hidden
     denormalMantissaBits: 52,
@@ -455,63 +473,42 @@ const doublePrecisionFormat: FloatFormatInfo = {
     overflowDecimalExponent: 308
 }
 
+
 export const DefaultFloatInfo: IFloatInfo = {
     denormalMantissaBits: 52,
     minFastFloatDecimalExponent: -342,
     maxFastFloatDecimalExponent: 308,
-    infinityExponent: 1024,
+    infinityExponent: 2047,
+    denormalMantissaMask: (1n << 52n) - 1n,
     minExponentRoundToEven: -27,
     maxExponentRoundToEven: 55,
     maxBinaryExponent: 1023
 }
 
-export function computeFloat(exponent: number, mantissa: bigint, floatInfo: IFloatInfo): number {
-    const result = computeFloatInternal(exponent, mantissa, floatInfo);
+export function computeFloat(exponent: number, mantissa: bigint, floatInfo: IFloatInfo): number | undefined {
+    const result = computeFloatInternal(exponent, mantissa, floatInfo)
 
     if (result.exponent > 0) {
-        if (floatInfo.denormalMantissaBits === 23) {
-            let bits = Number(result.mantissa & 0x7FFFFFn)
-            bits |= (result.exponent & 0xFF) << 23
+        const mantissaNum = Number(result.mantissa & floatInfo.denormalMantissaMask)
 
-            const float32 = new Float32Array(new Uint32Array([bits]).buffer)[0]
-            return float32
+        if (result.exponent === 0 && mantissaNum === 0) {
+            return 0
         }
-        else {
-            const mantissaNum = Number(result.mantissa & ((1n << 52n) - 1n))
 
-            if (result.exponent === 0 && mantissaNum === 0) {
-                return 0
-            }
-
-            if (result.exponent === floatInfo.infinityExponent) {
-                return Infinity
-            }
-
-            const bias = 1023
-            const normalizedExponent = result.exponent - bias
-
-            const normalizedMantissa = 1 + mantissaNum / Math.pow(2, floatInfo.denormalMantissaBits)
-
-            return normalizedMantissa * Math.pow(2, normalizedExponent)
+        if (result.exponent === floatInfo.infinityExponent && mantissaNum === 0) {
+            return Infinity
         }
+
+        if (result.exponent === floatInfo.infinityExponent && mantissaNum !== 0) {
+            return NaN
+        }
+
+        const normalizedExponent = result.exponent - floatInfo.maxBinaryExponent
+        const normalizedMantissa = 1 + mantissaNum / Math.pow(2, floatInfo.denormalMantissaBits)
+        return normalizedMantissa * Math.pow(2, normalizedExponent)
     }
 
-    return 0
-}
-
-interface IFloatInfo {
-    denormalMantissaBits: number
-    minFastFloatDecimalExponent: number
-    maxFastFloatDecimalExponent: number
-    infinityExponent: number
-    minExponentRoundToEven: number
-    maxExponentRoundToEven: number
-    maxBinaryExponent: number
-}
-
-interface IFloatResult {
-    exponent: number
-    mantissa: bigint
+    return undefined
 }
 
 function computeFloatInternal(e: number, m: bigint, info: IFloatInfo): IFloatResult {

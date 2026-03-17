@@ -2,7 +2,7 @@ import { parseNumberF64 } from "./src/converters/number"
 
 const encoder = new TextEncoder()
 // console.log(1 / 7, parseNumberF64(encoder.encode((1 / 7).toString())))
-console.log(1.1234567891234568, parseNumberF64(encoder.encode("12345465344565")))
+console.log("90071992.54740992", parseNumberF64(encoder.encode("90071992.54740992")))
 
 // let obj = {
 //     id: 15,
