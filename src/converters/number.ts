@@ -11,9 +11,7 @@ export function convertNumber({ bytes, index, options }: ConvertState): Result<C
         j++
     }
 
-    const number =
-        parseNumberF64(bytes.subarray(index, j)) ??
-        Number(options.decoder.decode(bytes.subarray(index, j)))
+    const number = parseNumberF64(bytes.subarray(index, j), options.decoder)
 
     return success({
         value: number,
@@ -21,7 +19,8 @@ export function convertNumber({ bytes, index, options }: ConvertState): Result<C
     })
 }
 
-export function parseNumberF64(bytes: Uint8Array): number | undefined {
+
+export function parseNumberF64(bytes: Uint8Array, decoder: TextDecoder): number {
     let i = 0
 
     const PLUS = 43
@@ -172,7 +171,7 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
             return float
     }
 
-    return undefined
+    return Number(decoder.decode(bytes))
 }
 
 interface IFloatInfo {
@@ -204,9 +203,11 @@ export function computeFloat(e: number, m: bigint, info: IFloatInfo): number | u
     if (e > info.maxSafeExponent)
         return NaN
 
+    
     const lz = clz(m)
-    const normalizedM = m << BigInt(lz)
 
+    const normalizedM = m << BigInt(lz)
+    
     const product = computeProductApproximation(info.denormalMantissaBits + 3, e, normalizedM)
 
     const insideSafeExponent = e >= -27 && e <= 55
