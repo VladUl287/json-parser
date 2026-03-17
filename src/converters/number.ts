@@ -11,21 +11,14 @@ export function convertNumber({ bytes, index, options }: ConvertState): Result<C
         j++
     }
 
-    const numberString = options.decoder.decode(bytes.slice(index, j))
+    const number =
+        parseNumberF64(bytes.subarray(index, j)) ??
+        Number(options.decoder.decode(bytes.subarray(index, j)))
+
     return success({
-        value: Number(numberString),
+        value: number,
         nextIndex: j
     })
-}
-
-const POS_POW10 = [1]
-for (let i = 1; i <= 308; i++) {
-    POS_POW10[i] = POS_POW10[i - 1] * 10
-}
-
-const BIG_POW_10 = [1n]
-for (let i = 1; i <= 15; i++) {
-    BIG_POW_10[i] = BIG_POW_10[i - 1] * 10n
 }
 
 export function parseNumberF64(bytes: Uint8Array): number | undefined {
@@ -174,7 +167,7 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
             return result
         }
 
-        const float = computeFloat(exponent, mantissa, DefaultFloatInfo)
+        const float = computeFloat(exponent, mantissa, defaultFloatInfo)
         if (float)
             return float
     }
@@ -184,91 +177,51 @@ export function parseNumberF64(bytes: Uint8Array): number | undefined {
 
 interface IFloatInfo {
     denormalMantissaBits: number
-    minFastFloatDecimalExponent: number
-    maxFastFloatDecimalExponent: number
+    denormalMantissaMask: bigint
+    minSafeExponent: number
+    maxSafeExponent: number
+    maxBinaryExponent: number
     infinityExponent: number
     minExponentRoundToEven: number
     maxExponentRoundToEven: number
-    maxBinaryExponent: number
-    denormalMantissaMask: bigint
 }
 
-interface IFloatResult {
-    exponent: number
-    mantissa: bigint
-}
-
-export const DefaultFloatInfo: IFloatInfo = {
+const defaultFloatInfo: IFloatInfo = {
     denormalMantissaBits: 52,
-    minFastFloatDecimalExponent: -342,
-    maxFastFloatDecimalExponent: 308,
-    infinityExponent: 2047,
     denormalMantissaMask: (1n << 52n) - 1n,
+    minSafeExponent: -342,
+    maxSafeExponent: 308,
+    maxBinaryExponent: 1023,
+    infinityExponent: 2047,
     minExponentRoundToEven: -27,
-    maxExponentRoundToEven: 55,
-    maxBinaryExponent: 1023
+    maxExponentRoundToEven: 55
 }
 
-export function computeFloat(exponent: number, mantissa: bigint, floatInfo: IFloatInfo): number | undefined {
-    const result = computeFloatInternal(exponent, mantissa, floatInfo)
+export function computeFloat(e: number, m: bigint, info: IFloatInfo): number | undefined {
+    if (m === 0n || e < info.minSafeExponent)
+        return undefined
 
-    if (result.exponent > 0) {
-        const mantissaNum = Number(result.mantissa & floatInfo.denormalMantissaMask)
+    if (e > info.maxSafeExponent)
+        return NaN
 
-        if (result.exponent === floatInfo.infinityExponent && mantissaNum === 0) {
-            return Infinity
-        }
+    const lz = clz(m)
+    const normalizedM = m << BigInt(lz)
 
-        if (result.exponent === floatInfo.infinityExponent && mantissaNum !== 0) {
-            return NaN
-        }
-
-        const normalizedExponent = result.exponent - floatInfo.maxBinaryExponent
-        const normalizedMantissa = 1 + mantissaNum / Math.pow(2, floatInfo.denormalMantissaBits)
-        return normalizedMantissa * Math.pow(2, normalizedExponent)
-    }
-
-    return undefined
-}
-
-function computeFloatInternal(e: number, m: bigint, info: IFloatInfo): IFloatResult {
-    if (m === 0n || e < info.minFastFloatDecimalExponent) {
-        return { exponent: 0, mantissa: 0n }
-    }
-
-    if (e > info.maxFastFloatDecimalExponent) {
-        return { exponent: info.infinityExponent, mantissa: 0n }
-    }
-
-    // Normalize the mantissa - make the most significant bit 1
-    let lz = clz(m)
-    // let lz1 = clz1(m)
-    let normalizedM = m << BigInt(lz)
-
-    // Compute approximate product
     const product = computeProductApproximation(info.denormalMantissaBits + 3, e, normalizedM)
 
-    // Check for potential precision issues
-    if (product.low === 0xFFFFFFFFFFFFFFFFn) {
-        const insideSafeExponent = e >= -27 && e <= 55
-        if (!insideSafeExponent) {
-            return { exponent: -1, mantissa: 0n }
-        }
+    const insideSafeExponent = e >= -27 && e <= 55
+    if (product.low === 0xFFFFFFFFFFFFFFFFn && !insideSafeExponent) {
+        return undefined
     }
 
-    // Determine the upper bit position
     const upperBit = Number(product.high >> 63n)
 
-    // Extract mantissa
     let mantissa = product.high >> BigInt(upperBit + 64 - info.denormalMantissaBits - 3)
-
-    // Calculate exponent
     let exponent = (calculatePower(e) + upperBit - lz - (-info.maxBinaryExponent));
 
-    // Handle subnormal cases
     if (exponent <= 0) {
         if (-exponent + 1 >= 64) {
-            return { exponent: 0, mantissa: 0n }
+            return undefined
         }
 
         mantissa >>= BigInt(-exponent + 1)
@@ -276,38 +229,49 @@ function computeFloatInternal(e: number, m: bigint, info: IFloatInfo): IFloatRes
         mantissa >>= 1n
 
         exponent = mantissa < (1n << BigInt(info.denormalMantissaBits)) ? 0 : 1
-        return { exponent, mantissa }
     }
+    else {
+        if (product.low <= 1n && e >= info.minExponentRoundToEven && e <= info.maxExponentRoundToEven &&
+            (mantissa & 3n) === 1n) {
 
-    // Handle rounding for edge cases
-    if (product.low <= 1n && e >= info.minExponentRoundToEven && e <= info.maxExponentRoundToEven &&
-        (mantissa & 3n) === 1n) {
+            const check = mantissa << BigInt(upperBit + 64 - info.denormalMantissaBits - 3)
+            if (check === product.high) {
+                mantissa &= ~1n
+            }
+        }
 
-        const check = mantissa << BigInt(upperBit + 64 - info.denormalMantissaBits - 3)
-        if (check === product.high) {
-            mantissa &= ~1n
+        mantissa += (mantissa & 1n)
+        mantissa >>= 1n
+
+        if (mantissa >= (2n << BigInt(info.denormalMantissaBits))) {
+            mantissa = (1n << BigInt(info.denormalMantissaBits))
+            exponent++
+        }
+
+        mantissa &= ~(1n << BigInt(info.denormalMantissaBits))
+
+        if (exponent >= info.infinityExponent) {
+            return Infinity
         }
     }
 
-    // Final rounding and normalization
-    mantissa += (mantissa & 1n)
-    mantissa >>= 1n;
+    if (exponent > 0) {
+        const mantissaNum = Number(mantissa & info.denormalMantissaMask)
 
-    if (mantissa >= (2n << BigInt(info.denormalMantissaBits))) {
-        mantissa = (1n << BigInt(info.denormalMantissaBits))
-        exponent++;
-    }
-
-    mantissa &= ~(1n << BigInt(info.denormalMantissaBits))
-
-    if (exponent >= info.infinityExponent) {
-        return {
-            exponent: info.infinityExponent,
-            mantissa: 0n
+        if (exponent === info.infinityExponent && mantissaNum === 0) {
+            return Infinity
         }
+
+        if (exponent === info.infinityExponent && mantissaNum !== 0) {
+            return NaN
+        }
+
+        const normalizedExponent = exponent - info.maxBinaryExponent
+        const normalizedMantissa = 1 + mantissaNum / Math.pow(2, info.denormalMantissaBits)
+        return normalizedMantissa * Math.pow(2, normalizedExponent)
     }
 
-    return { exponent, mantissa }
+    return undefined
 }
 
 function computeProductApproximation(bitPrecision: number, e: number, m: bigint): { high: bigint; low: bigint } {
@@ -334,25 +298,6 @@ function computeProductApproximation(bitPrecision: number, e: number, m: bigint)
     return { high, low }
 }
 
-function getDigitsFromBigInt(num, startIndex, length) {
-    const totalDigits = num.toString().length
-
-    const divisor = 10n ** BigInt(totalDigits - startIndex - length)
-    const mask = 10n ** BigInt(length)
-
-    return (num / divisor) % mask
-}
-
-function countSignificantBits(value: bigint): number {
-    if (value === 0n) return 0
-    return value.toString(2).length
-}
-
-function countSignificantBits1(value: number): number {
-    if (value === 0) return 0
-    return value.toString(2).length
-}
-
 function clz(x: bigint): number {
     // Clamp to 64-bit unsigned range
     x = BigInt.asUintN(64, x)
@@ -368,6 +313,16 @@ function clz(x: bigint): number {
 
 function calculatePower(q: number): number {
     return (((152170 + 65536) * q) >> 16) + 63
+}
+
+const POS_POW10 = [1]
+for (let i = 1; i <= 308; i++) {
+    POS_POW10[i] = POS_POW10[i - 1] * 10
+}
+
+const BIG_POW_10 = [1n]
+for (let i = 1; i <= 15; i++) {
+    BIG_POW_10[i] = BIG_POW_10[i - 1] * 10n
 }
 
 const POW5_128 =
