@@ -522,6 +522,7 @@ function computeFloatInternal(e: number, m: bigint, info: IFloatInfo): IFloatRes
 
     // Normalize the mantissa - make the most significant bit 1
     let lz = clz(m)
+    // let lz1 = clz1(m)
     let normalizedM = m << BigInt(lz)
 
     // Compute approximate product
@@ -661,8 +662,16 @@ function countSignificantBits1(value: number): number {
 }
 
 function clz(x: bigint): number {
+    // Clamp to 64-bit unsigned range
+    x = BigInt.asUintN(64, x)
     if (x === 0n) return 64
-    return x.toString(2).padStart(64, '0').indexOf('1')
+
+    const high = Number(x >> 32n) // high 32 bits as Number
+    if (high !== 0) {
+        return Math.clz32(high) // leading zeros in high 32 bits
+    }
+    const low = Number(x & 0xFFFFFFFFn) // low 32 bits as Number
+    return 32 + Math.clz32(low) // all high bits were zero
 }
 
 function calculatePower(q: number): number {
