@@ -17,6 +17,7 @@ export type Metadata = {
     readonly name?: string,
     readonly value?: Metadata | Metadata[]
     readonly defaultValue?: unknown
+    readonly creator?: (props: [string, any][]) => object
 }
 
 function getType(value: unknown): TypeName {
@@ -35,11 +36,27 @@ function getType(value: unknown): TypeName {
     return typeof value
 }
 
+export function createObjectBuilder(propertyNames: [string, any][]): (props: [string, any][]) => object {
+    const assignments = propertyNames
+        .map((prop, index) => `${prop[0]}: props[${index}][1]`)
+        .join(',')
+
+    const body = `return {${assignments}}`
+
+    return new Function("props", body) as (props: [string, any][]) => object;
+}
+
 export function toMetadata(object: unknown): Metadata {
+    const value = toValue(object)
+    const creator = createObjectBuilder((value as Metadata[]).map(c => {
+        return [c.name, c.defaultValue]
+    }))
+
     return {
         defaultValue: object,
         type: getType(object),
-        value: toValue(object)
+        value: toValue(object),
+        creator: creator
     }
 
     function toValue(object: unknown): Metadata | Metadata[] {

@@ -1,30 +1,18 @@
-import { parseNumberF64 } from "./src/converters/number"
+import { deserialize } from "./src/json"
+import { toMetadata } from "./src/metadata/metadata"
 
-const encoder = new TextEncoder()
+const obj = {
+    id: 15,
+    order: 1244,
+    phone: {
+        code: 7
+    },
+}
 
-console.log(parseNumberF64(encoder.encode("9007199254740992")))
+const metadata = toMetadata(obj)
 
-// let obj = {
-//     id: 15,
-//     order: 1244,
-//     phone: {
-//         country: "ru",
-//         code: 7
-//     },
-//     // points: [1, 2],
-//     // points: [{ id: 1, names: ["test", "test1"] }],
-//     // createdAt: new Date(),
-//     // updatedAt: new Date(),
-// }
+const value = JSON.stringify(obj, null, 4)
 
-// const metadata = toMetadata(obj)
-
-// console.log(JSON.stringify(metadata, null, 4), '\n\n')
-
-// const value = JSON.stringify(obj, null, 4)
-
-// console.log(value, '\n\n')
-
-// const deserialized = deserialize(value, metadata)
+const deserialized = deserialize(new TextEncoder().encode(value), metadata)
 
 // console.log(deserialized)
