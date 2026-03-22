@@ -4,9 +4,10 @@ import { toMetadata } from "./src/metadata/metadata"
 const obj = {
     id: 15,
     order: 1244,
-    phone: {
-        code: 7
-    },
+    phone: 343543534
+    // phone: {
+    //     code: 7
+    // },
 }
 
 const metadata = toMetadata(obj)

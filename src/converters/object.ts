@@ -13,14 +13,11 @@ export function convertObject(ctx: ConvertState): Result<ConvertResult<object>, 
         return error(`fail parseObject open not found ${index}  ${ctx.depth}`)
     index++
 
-    function toFields(fields: Metadata[]): [string, any][] {
-        const result = new Array<[string, any]>(fields.length)
+    function toFields(fields: Metadata[]): any[] {
+        const result = new Array<any>(fields.length)
 
         for (let i = 0; i < fields.length; i++) {
             const field = fields[i]
-
-            result[i] = ["1", 12]
-            continue;
 
             index = skipWhitespace(bytes, index)
 
@@ -61,21 +58,13 @@ export function convertObject(ctx: ConvertState): Result<ConvertResult<object>, 
                 index++
             }
 
-            result[i] = [field.name, resultValue.value]
+            result[i] = resultValue.value
         }
         return result
     }
 
     const fields = toFields((metadata as Metadata).value as Metadata[])
-    
-    // const result = Object.fromEntries(fields)
     const result = (metadata as Metadata).creator(fields)
-
-    return success({
-        value: 1 as any,
-        nextIndex: 1
-    })
-
 
     if (bytes[index] !== JsonCodes.CURLY_CLOSE)
         return error("fail parseObject close not found")
