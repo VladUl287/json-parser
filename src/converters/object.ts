@@ -4,6 +4,7 @@ import { error, Result, success } from "../utils/result"
 import { ConvertResult, ConvertState } from "./types"
 import { skipWhitespace } from "./utils"
 
+const tempFieldArray = new Uint8Array(8)
 export function convertObject(ctx: ConvertState): Result<ConvertResult<object>, string> {
     let { bytes, index, options, metadata } = ctx
 
@@ -25,9 +26,11 @@ export function convertObject(ctx: ConvertState): Result<ConvertResult<object>, 
                 throw new Error(`not start of property ${index}`)
             index++
 
-            const fieldName = options.encoder.encode(field.name)
+            const fieldName = tempFieldArray
+            const info = options.encoder.encodeInto(field.name, fieldName)
+
             let j = 0
-            while (j < fieldName.length) {
+            while (j < info.written) {
                 if (bytes[index] !== fieldName[j])
                     throw new Error(`not correct property ${field.name}`)
 
