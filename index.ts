@@ -16,4 +16,4 @@ const value = JSON.stringify(obj, null, 4)
 
 const deserialized = deserialize(new TextEncoder().encode(value), metadata)
 
-// console.log(deserialized)
+console.log(deserialized)

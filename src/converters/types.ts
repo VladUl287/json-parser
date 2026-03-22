@@ -1,5 +1,4 @@
 import { Metadata } from "../metadata/metadata"
-import { Result } from "../utils/result"
 import { JsonOptions } from "../options/types"
 
 export type ConvertState = {
@@ -11,9 +10,10 @@ export type ConvertState = {
     depth: number
 }
 
-export type Converter<T> = (ctx: ConvertState) => Result<ConvertResult<T>, string>
+export type Converter<T> = (ctx: ConvertState) => ConvertResult<T>
 
 export type ConvertResult<T> = {
-    readonly value: T
-    readonly nextIndex: number
+    readonly value?: T
+    readonly nextIndex?: number
+    readonly error?: string
 }

@@ -1,9 +1,8 @@
 import { JsonCodes } from "../utils/constants"
-import { Result, success } from "../utils/result"
 import { ConvertResult, ConvertState } from "./types"
 import { skipWhitespace } from "./utils"
 
-export function convertNumber({ bytes, index, options }: ConvertState): Result<ConvertResult<number>, string> {
+export function convertNumber({ bytes, index, options }: ConvertState): ConvertResult<number> {
     index = skipWhitespace(bytes, index)
 
     let j = index
@@ -13,10 +12,10 @@ export function convertNumber({ bytes, index, options }: ConvertState): Result<C
 
     const number = parseNumberF64(bytes.subarray(index, j))
 
-    return success({
+    return {
         value: number,
         nextIndex: j
-    })
+    }
 }
 
 const decoder = new TextDecoder('utf-8', { fatal: true })

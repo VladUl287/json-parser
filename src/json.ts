@@ -3,7 +3,7 @@ import { convertObject } from "./converters/object"
 import { convertString } from "./converters/string"
 import { Converter, ConvertResult, ConvertState } from "./converters/types"
 import { Metadata, TypeName } from "./metadata/metadata"
-import { error, Result } from "./utils/result"
+import { error } from "./utils/result"
 import { JsonOptions } from "./options/types"
 import { mergerOptions } from "./options"
 
@@ -36,10 +36,10 @@ export function deserialize<T>(json: Uint8Array<ArrayBuffer>, metadata: Metadata
         depth: 0
     })
 
-    return result.getOrElse(undefined).value as T
+    return result.value as T
 }
 
-function convert<T>(ctx: ConvertState): Result<ConvertResult<T>, string> {
+function convert<T>(ctx: ConvertState): ConvertResult<T> {
     const { metadata, options, depth } = ctx
 
     if (depth > options.maxDepth)
@@ -52,5 +52,5 @@ function convert<T>(ctx: ConvertState): Result<ConvertResult<T>, string> {
     return converter({
         ...ctx,
         depth: depth + 1
-    }) as Result<ConvertResult<T>, string>
+    }) as ConvertResult<T>
 }

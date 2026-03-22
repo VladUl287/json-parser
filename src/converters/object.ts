@@ -1,17 +1,19 @@
 import { JsonCodes } from "../utils/constants"
 import { Metadata } from "../metadata/metadata"
-import { error, Result, success } from "../utils/result"
 import { ConvertResult, ConvertState } from "./types"
 import { skipWhitespace } from "./utils"
 
 const tempFieldArray = new Uint8Array(8)
-export function convertObject(ctx: ConvertState): Result<ConvertResult<object>, string> {
+export function convertObject(ctx: ConvertState): ConvertResult<object> {
     let { bytes, index, options, metadata } = ctx
 
     index = skipWhitespace(bytes, index)
 
     if (bytes[index] !== JsonCodes.CURLY_OPEN)
-        return error(`fail parseObject open not found ${index}  ${ctx.depth}`)
+        return {
+            error: `fail parseObject open not found ${index}  ${ctx.depth}`
+        }
+
     index++
 
     function toFields(fields: Metadata[]): any[] {
@@ -50,9 +52,8 @@ export function convertObject(ctx: ConvertState): Result<ConvertResult<object>, 
                 metadata: field,
                 index
             })
-            const resultValue = parseResult.getOrElse(null)
 
-            index = resultValue.nextIndex
+            index = parseResult.nextIndex
 
             if (bytes[index] === JsonCodes.COMMA) {
                 if (fields.length - 1 === i && !options.allowTrailingCommas) {
@@ -61,7 +62,7 @@ export function convertObject(ctx: ConvertState): Result<ConvertResult<object>, 
                 index++
             }
 
-            result[i] = resultValue.value
+            result[i] = parseResult.value
         }
         return result
     }
@@ -70,12 +71,14 @@ export function convertObject(ctx: ConvertState): Result<ConvertResult<object>, 
     const result = (metadata as Metadata).creator(fields)
 
     if (bytes[index] !== JsonCodes.CURLY_CLOSE)
-        return error("fail parseObject close not found")
+        return {
+            error: "fail parseObject close not found"
+        }
 
     index = skipWhitespace(bytes, index)
 
-    return success({
+    return {
         value: result,
         nextIndex: index
-    })
+    }
 }
