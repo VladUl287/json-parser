@@ -54,14 +54,16 @@ export function convertObject(ctx: ConvertState): ConvertResult<object> {
             index = parseResult.nextIndex
 
             if (bytes[index] === JsonCodes.COMMA) {
-                if (fields.length - 1 === i && !options.allowTrailingCommas) {
-                    throw new Error("trailing comma")
-                }
                 index++
             }
 
             result[i] = parseResult.value
         }
+
+        if (bytes[index - 1] === JsonCodes.COMMA && !options.allowTrailingCommas) {
+            throw new Error("trailing comma")
+        }
+
         return result
     }
 
