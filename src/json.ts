@@ -23,14 +23,13 @@ const defaultOptions: JsonOptions = Object.freeze({
     allowDuplicateProperties: false
 })
 
-let opt = null
 export function deserialize<T>(json: Uint8Array<ArrayBuffer>, metadata: Metadata, options?: JsonOptions): T {
-    opt ??= mergerOptions(defaultOptions, options)
+    options = mergerOptions(defaultOptions, options)
 
     const result = convert({
         bytes: json,
         metadata: metadata,
-        options: opt,
+        options: options,
         convert: convert,
         index: 0,
         depth: 0
