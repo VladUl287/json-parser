@@ -28,11 +28,9 @@ export function convertObject(ctx: ConvertState): ConvertResult<object> {
                 throw new Error(`not start of property ${index}`)
             index++
 
-            const fieldName = tempFieldArray
-            const info = options.encoder.encodeInto(field.name, fieldName)
-
             let j = 0
-            while (j < info.written) {
+            const fieldName = field.nameBytes
+            while (j < fieldName.length) {
                 if (bytes[index] !== fieldName[j])
                     throw new Error(`not correct property ${field.name}`)
 

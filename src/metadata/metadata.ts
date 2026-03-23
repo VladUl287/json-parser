@@ -15,6 +15,7 @@ export type TypeName =
 export type Metadata = {
     readonly type: TypeName
     readonly name?: string,
+    readonly nameBytes?: Uint8Array
     readonly value?: Metadata | Metadata[]
     readonly defaultValue?: unknown
     readonly creator?: (props: any[]) => object
@@ -46,6 +47,7 @@ export function createObjectBuilder(propertyNames: [string, any][]): (props: [st
     return new Function("props", body) as (props: any[]) => object
 }
 
+const encoder = new TextEncoder()
 export function toMetadata(object: unknown): Metadata {
     const value = toValue(object)
     const creator = createObjectBuilder((value as Metadata[]).map(c => {
@@ -72,6 +74,7 @@ export function toMetadata(object: unknown): Metadata {
         return Object.keys(object)
             .map((key): Metadata => ({
                 name: key,
+                nameBytes: encoder.encode(key),
                 type: getType(object[key]),
                 value: toValue(object[key]),
                 defaultValue: object[key]
