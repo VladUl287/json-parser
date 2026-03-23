@@ -3,7 +3,6 @@ import { Metadata } from "../metadata/metadata"
 import { ConvertResult, ConvertState } from "./types"
 import { skipWhitespace } from "./utils"
 
-const tempFieldArray = new Uint8Array(8)
 export function convertObject(ctx: ConvertState): ConvertResult<object> {
     let { bytes, index, options, metadata } = ctx
 

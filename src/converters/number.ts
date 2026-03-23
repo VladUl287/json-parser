@@ -2,7 +2,7 @@ import { JsonCodes } from "../utils/constants"
 import { ConvertResult, ConvertState } from "./types"
 import { skipWhitespace } from "./utils"
 
-export function convertNumber({ bytes, index, options }: ConvertState): ConvertResult<number> {
+export function convertNumber({ bytes, index }: ConvertState): ConvertResult<number> {
     index = skipWhitespace(bytes, index)
 
     let j = index
