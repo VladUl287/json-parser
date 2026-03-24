@@ -1,12 +1,10 @@
 import { JsonCodes } from "../utils/constants"
 
-const isWhitespaceBitMap = new Uint8Array(256)
-isWhitespaceBitMap[JsonCodes.SPACE] = 1
-isWhitespaceBitMap[JsonCodes.NEW_LINE] = 1
-isWhitespaceBitMap[JsonCodes.TAB] = 1
-isWhitespaceBitMap[JsonCodes.CARRIAGE_RETURN] = 1
+const WS_BITMASK =
+    (1 << JsonCodes.SPACE) | (1 << JsonCodes.NEW_LINE) |
+    (1 << JsonCodes.TAB) | (1 << JsonCodes.CARRIAGE_RETURN)
 
-export const isWhitespace = (byte: number) => isWhitespaceBitMap[byte]
+export const isWhitespace = (byte: number) => (WS_BITMASK >> byte) & 1
 
 export function skipWhitespace(bytes: Uint8Array<ArrayBuffer>, i: number): number {
     while (i < bytes.length && isWhitespace(bytes[i]))
