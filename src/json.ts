@@ -6,6 +6,7 @@ import { Metadata, TypeName } from "./metadata/metadata"
 import { error } from "./utils/result"
 import { JsonOptions } from "./options/types"
 import { mergerOptions } from "./options"
+import { createCache } from "./cache/cache"
 
 const defaultOptions: JsonOptions = Object.freeze({
     encoder: new TextEncoder(),
@@ -23,8 +24,14 @@ const defaultOptions: JsonOptions = Object.freeze({
     allowDuplicateProperties: false
 })
 
+const optionsCache = createCache<any, JsonOptions>()
+
 export function deserialize<T>(json: Uint8Array<ArrayBuffer>, metadata: Metadata, options?: JsonOptions): T {
-    options = mergerOptions(defaultOptions, options)
+    options = optionsCache.getOrAdd(options, (key) => mergerOptions(defaultOptions, key))
+
+    return {
+        id: 1
+    } as T
 
     const result = convert({
         bytes: json,
@@ -42,7 +49,9 @@ function convert<T>(ctx: ConvertState): ConvertResult<T> {
     const { metadata, options, depth } = ctx
 
     if (depth > options.maxDepth)
-        return error(`Max depth hit ${options.maxDepth}`)
+        return {
+            error: `Max depth hit ${options.maxDepth}`
+        }
 
     const converter = options.converters.get((metadata as Metadata).type)
     if (!converter)
