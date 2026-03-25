@@ -14,7 +14,7 @@ export function convertObject(ctx: ConvertState): ConvertResult<object> {
     index++
 
     const meta = (metadata as Metadata).value as Metadata[]
-    const [fields, i] = toFields(meta, bytes, index)
+    const [fields, i] = toFields(ctx, meta, index)
     const result = (metadata as Metadata).creator(fields)
 
     index = i
@@ -29,7 +29,9 @@ export function convertObject(ctx: ConvertState): ConvertResult<object> {
 }
 
 const fieldResult = new Array<any>(16)
-function toFields(fields: Metadata[], bytes: Uint8Array<ArrayBuffer>, index: number): [any[], number] {
+function toFields(ctx: ConvertState, fields: Metadata[], index: number): [any[], number] {
+    const bytes = ctx.bytes
+
     for (let i = 0; i < fields.length; i++) {
         const field = fields[i]
 
@@ -56,13 +58,13 @@ function toFields(fields: Metadata[], bytes: Uint8Array<ArrayBuffer>, index: num
 
         index = skipWhitespace(bytes, index)
 
-        // const parseResult = ctx.convert({
-        //     ...ctx,
-        //     metadata: field,
-        //     index
-        // })
+        const parseResult = ctx.convert({
+            ...ctx,
+            metadata: field,
+            index
+        })
 
-        // index = parseResult.nextIndex
+        index = parseResult.nextIndex
 
         while (bytes[index] !== JsonCodes.CURLY_CLOSE && bytes[index] !== JsonCodes.COMMA) {
             index++
