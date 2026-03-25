@@ -11,37 +11,44 @@ const stringBig = new TextEncoder().encode("phoneNumberphoneNumberphoneNumberpho
 const bigBytes = new Uint8Array([...stringBig])
 
 suite
-    .add('simd_small', () => simd_loop(smallBytes, stringSmall))
-    .add('loop_small', () => loop(smallBytes, stringSmall))
-    .add('simd_default', () => simd_loop(defaultBytes, stringDefault))
-    .add('loop_default', () => loop(defaultBytes, stringDefault))
-    .add('simd_big', () => simd_loop(bigBytes, stringBig))
-    .add('loop_big', () => loop(bigBytes, stringBig))
-    .on('cycle', function (event) {
-        console.log(String(event.target));
-    })
-    .on('complete', function () {
-        console.log('Fastest is ' + this.filter('fastest').map('name'));
-    })
-    .on('complete', function () {
-        formatBenchmarkResults(this)
-    })
+    .add('equals_small', () => equals(smallBytes, stringSmall))
+    .add('simd_small_8', () => equals_simd_8(smallBytes, stringSmall, 0))
+    .add('simd_small', () => equals_simd_4(smallBytes, stringSmall, 0))
+    .add('loop_small', () => equals_loop(smallBytes, stringSmall, 0))
+    .add('equals_default', () => equals(defaultBytes, defaultBytes))
+    .add('simd_default_8', () => equals_simd_8(defaultBytes, stringDefault, 0))
+    .add('simd_default', () => equals_simd_4(defaultBytes, stringDefault, 0))
+    .add('loop_default', () => equals_loop(defaultBytes, stringDefault, 0))
+    .add('equals_big', () => equals(bigBytes, bigBytes))
+    .add('simd_big_8', () => equals_simd_8(bigBytes, stringBig, 0))
+    .add('simd_big', () => equals_simd_4(bigBytes, stringBig, 0))
+    .add('loop_big', () => equals_loop(bigBytes, stringBig, 0))
+    .on('cycle', function (event) { console.log(String(event.target)) })
+    .on('complete', function () { formatBenchmarkResults(this) })
     .run({ 'async': true })
 
-function loop(a: Uint8Array, b: Uint8Array) {
-    let j = 0
-    let index = 0
+function equals(a: Uint8Array, b: Uint8Array): boolean {
+    if (a.length !== b.length) return false
+    if (a.length < 4) return equals_loop(a, b, 0)
+    if (a.length < 8) return equals_simd_4(a, b, 0)
+    return equals_simd_8(a, b, 0)
+}
+
+function equals_loop(a: Uint8Array, b: Uint8Array, start: number): boolean {
+    let j = start
+    let index = start
     while (j < b.length) {
-        if (a[index] !== b[j]) throw new Error(`not equal`)
+        if (a[index] !== b[j])
+            return false
         index++
         j++
     }
-    return index + j
+    return true
 }
 
-function simd_loop(aArr: Uint8Array, bArr: Uint8Array) {
-    let j = 0
-    let index = 0
+function equals_simd_4(aArr: Uint8Array, bArr: Uint8Array, start: number) {
+    let j = start
+    let index = start
     while (j < bArr.length - 4) {
         const a = aArr[index]
         const b = aArr[index + 1]
@@ -54,15 +61,41 @@ function simd_loop(aArr: Uint8Array, bArr: Uint8Array) {
         const dd = bArr[j + 3]
 
         if (a != aa || b != bb || c != cc || d != dd)
-            throw new Error(`not correct property`)
+            return false
 
         index += 4
         j += 4
     }
-    while (j < bArr.length) {
-        if (aArr[index] !== bArr[j]) throw new Error(`not equal`)
-        index++
-        j++
+    return equals_loop(aArr, bArr, j)
+}
+
+function equals_simd_8(aArr: Uint8Array, bArr: Uint8Array, start: number): boolean {
+    let j = start
+    let index = start
+    while (j < bArr.length - 8) {
+        const a = aArr[index]
+        const b = aArr[index + 1]
+        const c = aArr[index + 2]
+        const d = aArr[index + 3]
+        const e = aArr[index + 4]
+        const f = aArr[index + 5]
+        const g = aArr[index + 6]
+        const x = aArr[index + 7]
+
+        const aa = bArr[j]
+        const bb = bArr[j + 1]
+        const cc = bArr[j + 2]
+        const dd = bArr[j + 3]
+        const ee = bArr[j + 4]
+        const ff = bArr[j + 5]
+        const gg = bArr[j + 6]
+        const xx = bArr[j + 7]
+
+        if (a != aa || b != bb || c != cc || d != dd || e != ee || f != ff || g != gg || x != xx)
+            return false
+
+        index += 8
+        j += 8
     }
-    return index + j
+    return equals_simd_4(aArr, bArr, j)
 }
