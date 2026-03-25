@@ -7,7 +7,7 @@ export function equals(a: Uint8Array, b: Uint8Array, aI: number, bI: number): bo
 
 export function equals_loop(a: Uint8Array, b: Uint8Array, aI: number, bI: number): boolean {
     while (aI < b.length) {
-        if (a[aI] != b[bI])
+        if (a[aI] !== b[bI])
             return false
         aI++
         bI++
@@ -27,7 +27,7 @@ export function equals_simd_4(aArr: Uint8Array, bArr: Uint8Array, aI: number, bI
         const cc = bArr[bI + 2]
         const dd = bArr[bI + 3]
 
-        if (a != aa || b != bb || c != cc || d != dd)
+        if (a !== aa || b !== bb || c !== cc || d !== dd)
             return false
 
         aI += 4
@@ -56,7 +56,7 @@ export function equals_simd_8(aArr: Uint8Array, bArr: Uint8Array, aI: number, bI
         const gg = bArr[bI + 6]
         const xx = bArr[bI + 7]
 
-        if (a != aa || b != bb || c != cc || d != dd || e != ee || f != ff || g != gg || x != xx)
+        if (a !== aa || b !== bb || c !== cc || d !== dd || e !== ee || f !== ff || g !== gg || x !== xx)
             return false
 
         aI += 8
