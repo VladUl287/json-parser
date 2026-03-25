@@ -63,15 +63,11 @@ function toFields(ctx: ConvertState, fields: Metadata[], index: number, depth: n
 
         index = parseResult.nextIndex
 
-        while (bytes[index] !== JsonCodes.CURLY_CLOSE && bytes[index] !== JsonCodes.COMMA) {
-            index++
-        }
-
         if (bytes[index] === JsonCodes.COMMA) {
             index++
         }
 
-        fieldResult[i] = field.defaultValue
+        fieldResult[i] = parseResult.value
     }
 
     return [fieldResult, index]
