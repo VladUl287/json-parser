@@ -25,6 +25,9 @@ const WS_BITMASK =
 const isWhitespaceMask = (byte: number) => (WS_BITMASK >> byte) & 1
 
 suite
+    .add('or-symbol', () => isWhitespaceOr(bytes[0]))
+    .add('bitmap-symbol', () => isWhitespaceMap(bytes[0]))
+    .add('bitmask-symbol', () => isWhitespaceMask(bytes[0]))
     .add('or', () => {
         let i = 0
         while (isWhitespaceOr(bytes[i])) i++

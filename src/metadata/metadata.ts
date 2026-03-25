@@ -15,7 +15,7 @@ export type TypeName =
 export type Metadata = {
     readonly type: TypeName
     readonly name?: string,
-    readonly nameBytes?: Uint8Array
+    readonly nameBytes?: Uint8Array<ArrayBuffer>
     readonly value?: Metadata | Metadata[]
     readonly defaultValue?: unknown
     readonly creator?: (props: any[]) => object

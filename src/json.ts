@@ -29,10 +29,6 @@ const optionsCache = createCache<any, JsonOptions>()
 export function deserialize<T>(json: Uint8Array<ArrayBuffer>, metadata: Metadata, options?: JsonOptions): T {
     options = optionsCache.getOrAdd(options, (key) => mergerOptions(defaultOptions, key))
 
-    return {
-        id: 1
-    } as T
-
     const result = convert({
         bytes: json,
         metadata: metadata,
