@@ -2,6 +2,7 @@ import { JsonCodes } from "../utils/constants"
 import { Metadata } from "../metadata/metadata"
 import { ConvertMeta, ConvertResult, ConvertState } from "./types"
 import { skipWhitespace } from "./utils"
+import { equals } from "../utils/array"
 
 export function convertObject(
     ctx: ConvertState, metadata: ConvertMeta, index: number, depth: number): ConvertResult<object> {
@@ -42,16 +43,13 @@ function toFields(ctx: ConvertState, fields: Metadata[], index: number, depth: n
             throw new Error(`not start of property ${index}`)
         index++
 
-        let j = 0
         const fieldName = field.nameBytes
-        while (j < fieldName.length) {
-            if (bytes[index] !== fieldName[j])
-                throw new Error(`not correct property ${field.name}`)
 
-            index++
-            j++
-        }
-        index++
+        const equal = equals(bytes, fieldName, index, 0)
+        if (!equal)
+            throw new Error(`not correct property ${field.name}`)
+
+        index += fieldName.length + 1
 
         if (bytes[index] !== JsonCodes.COLON)
             throw new Error(`not end of property`)
