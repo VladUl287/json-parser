@@ -1,8 +1,11 @@
 import { JsonCodes } from "../utils/constants"
-import { ConvertResult, ConvertState } from "./types"
+import { ConvertMeta, ConvertResult, ConvertState } from "./types"
 import { skipWhitespace } from "./utils"
 
-export function convertString({ bytes, index, options }: ConvertState): ConvertResult<string> {
+export function convertString(
+    ctx: ConvertState, metadata: ConvertMeta, index: number, depth: number): ConvertResult<string> {
+    const bytes = ctx.bytes
+
     index = skipWhitespace(bytes, index)
 
     if (bytes[index] !== JsonCodes.DOUBLE_QUOTE)
@@ -14,7 +17,7 @@ export function convertString({ bytes, index, options }: ConvertState): ConvertR
         index++
     }
 
-    const stringValue = options.decoder.decode(bytes.slice(start, index))
+    const stringValue = ctx.options.decoder.decode(bytes.slice(start, index))
     index++
 
     return {

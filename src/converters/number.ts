@@ -1,8 +1,11 @@
 import { JsonCodes } from "../utils/constants"
-import { ConvertResult, ConvertState } from "./types"
+import { ConvertMeta, ConvertResult, ConvertState } from "./types"
 import { skipWhitespace } from "./utils"
 
-export function convertNumber({ bytes, index }: ConvertState): ConvertResult<number> {
+export function convertNumber(
+    ctx: ConvertState, metadata: ConvertMeta, index: number, depth: number): ConvertResult<number> {
+    const bytes = ctx.bytes
+
     index = skipWhitespace(bytes, index)
 
     let j = index

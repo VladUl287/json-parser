@@ -1,9 +1,8 @@
 import { convertNumber } from "./converters/number"
 import { convertObject } from "./converters/object"
 import { convertString } from "./converters/string"
-import { Converter, ConvertResult, ConvertState } from "./converters/types"
+import { Converter, ConvertMeta, ConvertResult, ConvertState } from "./converters/types"
 import { Metadata, TypeName } from "./metadata/metadata"
-import { error } from "./utils/result"
 import { JsonOptions } from "./options/types"
 import { mergerOptions } from "./options"
 import { createCache } from "./cache/cache"
@@ -31,30 +30,22 @@ export function deserialize<T>(json: Uint8Array<ArrayBuffer>, metadata: Metadata
 
     const result = convert({
         bytes: json,
-        metadata: metadata,
         options: options,
-        convert: convert,
-        index: 0,
-        depth: 0
-    })
+        convert: convert
+    }, metadata, 0, 0)
 
     return result.value as T
 }
 
-function convert<T>(ctx: ConvertState): ConvertResult<T> {
-    const { metadata, options, depth } = ctx
+function convert<T>(ctx: ConvertState, meta: ConvertMeta, index: number, depth: number): ConvertResult<T> {
+    const options = ctx.options
 
     if (depth > options.maxDepth)
-        return {
-            error: `Max depth hit ${options.maxDepth}`
-        }
+        throw new Error(`Max depth hit ${options.maxDepth}`)
 
-    const converter = options.converters.get((metadata as Metadata).type)
+    const converter = options.converters.get((meta as Metadata).type)
     if (!converter)
-        return error(`Converter not found for type ${(metadata as Metadata).type}`)
+        throw new Error(`Converter not found for type ${(meta as Metadata).type}`)
 
-    return converter({
-        ...ctx,
-        depth: depth + 1
-    }) as ConvertResult<T>
+    return converter(ctx, meta, index, depth + 1) as ConvertResult<T>
 }

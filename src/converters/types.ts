@@ -3,14 +3,13 @@ import { JsonOptions } from "../options/types"
 
 export type ConvertState = {
     readonly bytes: Uint8Array<ArrayBuffer>
-    readonly metadata: Metadata | Metadata[]
     readonly options: JsonOptions
     readonly convert: Converter<unknown>
-    index: number
-    depth: number
 }
 
-export type Converter<T> = (ctx: ConvertState) => ConvertResult<T>
+export type ConvertMeta = Metadata | Metadata[]
+
+export type Converter<T> = (ctx: ConvertState, meta: ConvertMeta, index: number, depth: number) => ConvertResult<T>
 
 export type ConvertResult<T> = {
     readonly value?: T

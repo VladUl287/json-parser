@@ -1,20 +1,21 @@
 import { JsonCodes } from "../utils/constants"
 import { Metadata } from "../metadata/metadata"
-import { ConvertResult, ConvertState } from "./types"
+import { ConvertMeta, ConvertResult, ConvertState } from "./types"
 import { skipWhitespace } from "./utils"
 
-export function convertObject(ctx: ConvertState): ConvertResult<object> {
-    let { bytes, index, metadata } = ctx
+export function convertObject(
+    ctx: ConvertState, metadata: ConvertMeta, index: number, depth: number): ConvertResult<object> {
+    const bytes = ctx.bytes
 
     index = skipWhitespace(bytes, index)
 
     if (bytes[index] !== JsonCodes.CURLY_OPEN)
-        throw new Error(`fail parseObject open not found ${index}  ${ctx.depth}`)
+        throw new Error(`fail parseObject open not found ${index}  ${depth}`)
 
     index++
 
     const meta = (metadata as Metadata).value as Metadata[]
-    const [fields, i] = toFields(ctx, meta, index)
+    const [fields, i] = toFields(ctx, meta, index, depth)
     const result = (metadata as Metadata).creator(fields)
 
     index = i
@@ -29,7 +30,7 @@ export function convertObject(ctx: ConvertState): ConvertResult<object> {
 }
 
 const fieldResult = new Array<any>(16)
-function toFields(ctx: ConvertState, fields: Metadata[], index: number): [any[], number] {
+function toFields(ctx: ConvertState, fields: Metadata[], index: number, depth: number): [any[], number] {
     const bytes = ctx.bytes
 
     for (let i = 0; i < fields.length; i++) {
@@ -58,11 +59,7 @@ function toFields(ctx: ConvertState, fields: Metadata[], index: number): [any[],
 
         index = skipWhitespace(bytes, index)
 
-        const parseResult = ctx.convert({
-            ...ctx,
-            metadata: field,
-            index
-        })
+        const parseResult = ctx.convert(ctx, field, index, depth)
 
         index = parseResult.nextIndex
 
