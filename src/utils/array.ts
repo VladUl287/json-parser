@@ -1,7 +1,7 @@
 export function equals(a: Uint8Array, b: Uint8Array, aI: number, bI: number): boolean {
-    if (a.length !== b.length) return false
-    if (a.length < 4) return equals_loop(a, b, aI, bI)
-    if (a.length < 8) return equals_simd_4(a, b, aI, bI)
+    const length = Math.min(a.length, b.length)
+    if (length < 4) return equals_loop(a, b, aI, bI)
+    if (length < 8) return equals_simd_4(a, b, aI, bI)
     return equals_simd_8(a, b, aI, bI)
 }
 
