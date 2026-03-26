@@ -1,8 +1,7 @@
-import Benchmark from 'benchmark'
+import { Bench } from 'tinybench'
 import { parseNumberF64 } from '../src/converters/number'
-import { formatBenchmarkResults } from './utils'
 
-const suite = new Benchmark.Suite()
+const suite = new Bench({ name: 'object_creation', warmupIterations: 200 })
 
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()
@@ -13,6 +12,7 @@ const integerMidpath = encoder.encode("9007199254740992")
 const floatMidpath = encoder.encode("90071992.54740992")
 const integerSlowpath = encoder.encode("1123456789123456789123456789")
 const floatSlowPathNum = encoder.encode("1.123456789123456789123456789")
+
 suite
     .add('integerFastpath', () => parseNumberF64(integerFastpath))
     .add('integerFastpathDecoder', () => Number(decoder.decode(integerFastpath)))
@@ -26,13 +26,8 @@ suite
     .add('integerSlowpathDecoder', () => Number(decoder.decode(integerSlowpath)))
     .add('floatSlowpath', () => parseNumberF64(floatSlowPathNum))
     .add('floatSlowpathDecoder', () => Number(decoder.decode(floatSlowPathNum)))
-    .on('cycle', function (event) {
-        console.log(String(event.target));
-    })
-    .on('complete', function () {
-        console.log('Fastest is ' + this.filter('fastest').map('name'));
-    })
-    .on('complete', function () {
-        formatBenchmarkResults(this)
-    })
-    .run({ 'async': true })
+
+suite.run().then(() => {
+    console.log(suite.name)
+    console.table(suite.table())
+})

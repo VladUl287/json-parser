@@ -1,8 +1,7 @@
-import Benchmark from 'benchmark'
-import { formatBenchmarkResults } from './utils'
 import { JsonCodes } from '../src/utils/constants'
+import { Bench } from 'tinybench'
 
-const suite = new Benchmark.Suite()
+const suite = new Bench({ name: 'is_whitespace', warmupIterations: 200 })
 
 const bytes = new TextEncoder().encode("          _")
 
@@ -43,13 +42,9 @@ suite
         while (isWhitespaceMask(bytes[i])) i++
         return i
     })
-    .on('cycle', function (event) {
-        console.log(String(event.target));
-    })
-    .on('complete', function () {
-        console.log('Fastest is ' + this.filter('fastest').map('name'));
-    })
-    .on('complete', function () {
-        formatBenchmarkResults(this)
-    })
-    .run({ 'async': true })
+
+suite.run().then(() => {
+    console.log(suite.name)
+    console.table(suite.table())
+})
+

@@ -1,8 +1,7 @@
-import Benchmark from 'benchmark'
-import { formatBenchmarkResults } from './utils'
+import { Bench } from 'tinybench'
 import { createObjectBuilder } from '../src/metadata/metadata'
 
-const suite = new Benchmark.Suite()
+const suite = new Bench({ name: 'object_creation', warmupIterations: 200 })
 
 const date = new Date()
 
@@ -61,13 +60,8 @@ suite
         return obj
     })
     .add('assign', () => Object.assign({}, ...properties.map(([k, v]) => ({ [k]: v }))))
-    .on('cycle', function (event) {
-        console.log(String(event.target));
-    })
-    .on('complete', function () {
-        console.log('Fastest is ' + this.filter('fastest').map('name'));
-    })
-    .on('complete', function () {
-        formatBenchmarkResults(this)
-    })
-    .run({ 'async': true })
+
+suite.run().then(() => {
+    console.log(suite.name)
+    console.table(suite.table())
+})

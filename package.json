@@ -1,9 +1,7 @@
 {
   "devDependencies": {
     "@types/jest": "^30.0.0",
-    "benchmark": "^2.1.4",
     "jest": "^30.3.0",
-    "microtime": "^3.1.1",
     "tinybench": "^6.0.0",
     "ts-jest": "^29.4.6"
   }
