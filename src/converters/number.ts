@@ -61,7 +61,7 @@ export function parseNumberF64(bytes: Uint8Array, start: number, end: number): n
         let scale = 0
         let numberOfTrailingZeros = 0
 
-        while (i < length && digitsCount <= MAX_SAFE_DIGITS_COUNT) {
+        while (i < end && digitsCount <= MAX_SAFE_DIGITS_COUNT) {
             const byte = bytes[i]
 
             if (isDigit(byte)) {
