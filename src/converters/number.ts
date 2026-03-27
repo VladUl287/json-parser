@@ -2,7 +2,7 @@ import { JsonCodes } from "../utils/constants"
 import { ConvertMeta, ConvertResult, ConvertState } from "./types"
 
 export function convertNumber(
-    ctx: ConvertState, metadata: ConvertMeta, index: number, depth: number): ConvertResult<number> {
+    ctx: ConvertState, _metadata: ConvertMeta, index: number, _depth: number): ConvertResult<number> {
     const bytes = ctx.bytes
 
     let j = index
@@ -10,7 +10,7 @@ export function convertNumber(
         j++
     }
 
-    const number = parseNumberF64(bytes.subarray(index, j))
+    const number = parseNumberF64(bytes, index, j)
 
     return {
         value: number,
@@ -26,9 +26,11 @@ for (let i = 1; i <= 308; i++) {
 
 const MAX_SAFE_DIGITS_COUNT = 15
 
-export function parseNumberF64(bytes: Uint8Array): number {
-    if (bytes.length <= MAX_SAFE_DIGITS_COUNT) {
-        let i = 0
+export function parseNumberF64(bytes: Uint8Array, start: number, end: number): number {
+    const length = end - start
+
+    if (length <= MAX_SAFE_DIGITS_COUNT) {
+        let i = start
 
         const PLUS = 43
         const MINUS = 45
@@ -59,7 +61,7 @@ export function parseNumberF64(bytes: Uint8Array): number {
         let scale = 0
         let numberOfTrailingZeros = 0
 
-        while (i < bytes.length && digitsCount <= MAX_SAFE_DIGITS_COUNT) {
+        while (i < length && digitsCount <= MAX_SAFE_DIGITS_COUNT) {
             const byte = bytes[i]
 
             if (isDigit(byte)) {
@@ -136,5 +138,5 @@ export function parseNumberF64(bytes: Uint8Array): number {
         }
     }
 
-    return Number(decoder.decode(bytes))
+    return Number(decoder.decode(bytes.subarray(start, end)))
 }
