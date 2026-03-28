@@ -43,7 +43,7 @@ function toFields(ctx: ConvertState, fields: Metadata[], index: number, depth: n
             throw new Error(`not start of property ${index}`)
         index++
 
-        const equal = field.name.equal(field.name.bytes, bytes, index)
+        const equal = equals(field.name.bytes, bytes, index, 0)
         if (!equal)
             throw new Error(`not correct property ${field.name}`)
 
