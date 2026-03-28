@@ -43,13 +43,11 @@ function toFields(ctx: ConvertState, fields: Metadata[], index: number, depth: n
             throw new Error(`not start of property ${index}`)
         index++
 
-        const fieldName = field.nameBytes
-
-        const equal = equals(bytes, fieldName, index, 0)
+        const equal = field.name.equal(field.name.bytes, bytes, index)
         if (!equal)
             throw new Error(`not correct property ${field.name}`)
 
-        index += fieldName.length + 1
+        index += field.name.bytes.length + 1
 
         if (bytes[index] !== JsonCodes.COLON)
             throw new Error(`not end of property`)
