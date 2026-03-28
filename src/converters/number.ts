@@ -61,7 +61,30 @@ export function parseNumberF64(bytes: Uint8Array, start: number, end: number): n
         let scale = 0
         let numberOfTrailingZeros = 0
 
-        while (i < end && digitsCount <= MAX_SAFE_DIGITS_COUNT) {
+        while (i + 3 < end) {
+            const b1 = bytes[i]
+            const b2 = bytes[i + 1]
+            const b3 = bytes[i + 2]
+            const b4 = bytes[i + 3]
+
+            if ((b1 & 0xF0) === 0x30 && (b2 & 0xF0) === 0x30 &&
+                (b3 & 0xF0) === 0x30 && (b4 & 0xF0) === 0x30) {
+
+                mantissa = mantissa * 10000 +
+                    ((b1 & 0x0F) * 1000) +
+                    ((b2 & 0x0F) * 100) +
+                    ((b3 & 0x0F) * 10) +
+                    (b4 & 0x0F)
+
+                scale += 4
+                digitsCount += 4
+                i += 4
+                continue
+            }
+            break
+        }
+
+        while (i < end) {
             const byte = bytes[i]
 
             if (isDigit(byte)) {
