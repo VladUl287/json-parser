@@ -25,7 +25,6 @@ for (let i = 1; i <= 308; i++) {
 }
 
 const MAX_FAST_DIGITS = 15
-
 export function parseNumberF64(bytes: Uint8Array, start: number, end: number): number {
     const length = end - start
 
@@ -161,5 +160,8 @@ export function parseNumberF64(bytes: Uint8Array, start: number, end: number): n
         }
     }
 
-    return Number(decoder.decode(bytes.subarray(start, end)))
+    let result = ''
+    for (let i = start; i < end; i++)
+        result += String.fromCharCode(bytes[i])
+    return Number(result)
 }
