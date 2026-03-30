@@ -14,17 +14,17 @@ const integerSlowpath = encoder.encode("1123456789123456789123456789")
 const floatSlowPathNum = encoder.encode("1.123456789123456789123456789")
 
 suite
-    .add('integerFastpath', () => parseNumberF64(integerFastpath))
+    .add('integerFastpath', () => parseNumberF64(integerFastpath, 0, integerFastpath.length))
     .add('integerFastpathDecoder', () => Number(decoder.decode(integerFastpath)))
-    .add('floatFastpath', () => parseNumberF64(floatFastpath))
+    .add('floatFastpath', () => parseNumberF64(floatFastpath, 0, floatFastpath.length))
     .add('floatFastpathDecoder', () => Number(decoder.decode(floatFastpath)))
-    .add('integerMidpath', () => parseNumberF64(integerMidpath))
+    .add('integerMidpath', () => parseNumberF64(integerMidpath, 0, integerMidpath.length))
     .add('integerMidpathDecoder', () => Number(decoder.decode(integerMidpath)))
-    .add('floatMidpath', () => parseNumberF64(floatMidpath))
+    .add('floatMidpath', () => parseNumberF64(floatMidpath, 0, floatMidpath.length))
     .add('floatMidpathDecoder', () => Number(decoder.decode(floatMidpath)))
-    .add('integerSlowpath', () => parseNumberF64(integerSlowpath))
+    .add('integerSlowpath', () => parseNumberF64(integerSlowpath, 0, integerSlowpath.length))
     .add('integerSlowpathDecoder', () => Number(decoder.decode(integerSlowpath)))
-    .add('floatSlowpath', () => parseNumberF64(floatSlowPathNum))
+    .add('floatSlowpath', () => parseNumberF64(floatSlowPathNum, 0, floatSlowPathNum.length))
     .add('floatSlowpathDecoder', () => Number(decoder.decode(floatSlowPathNum)))
 
 suite.run().then(() => {
