@@ -24,12 +24,12 @@ for (let i = 1; i <= 308; i++) {
     POS_POW10[i] = POS_POW10[i - 1] * 10
 }
 
-const MAX_SAFE_DIGITS_COUNT = 15
+const MAX_FAST_DIGITS = 15
 
 export function parseNumberF64(bytes: Uint8Array, start: number, end: number): number {
     const length = end - start
 
-    if (length <= MAX_SAFE_DIGITS_COUNT) {
+    if (length <= MAX_FAST_DIGITS) {
         let i = start
 
         const PLUS = 43
@@ -137,7 +137,7 @@ export function parseNumberF64(bytes: Uint8Array, start: number, end: number): n
         const integerDigitsPresent = Math.min(positiveExponent, digitsCount)
         const fractionalDigitsPresent = digitsCount - integerDigitsPresent
 
-        if (digitsCount <= MAX_SAFE_DIGITS_COUNT) {
+        if (digitsCount <= MAX_FAST_DIGITS) {
             const exponent = scale - integerDigitsPresent - fractionalDigitsPresent
             const fastExponent = Math.abs(exponent)
 
