@@ -4,7 +4,9 @@ import { Converter } from "../converters/types"
 export type JsonOptions = {
     readonly encoder?: TextEncoder
     readonly decoder?: TextDecoder
-    readonly converters?: Map<TypeName, Converter<unknown>>
+    readonly converters?: {
+        [key in TypeName]?: Converter<unknown>
+    }
     readonly maxDepth?: number
     readonly allowTrailingCommas?: boolean,
     readonly fieldCaseInsensitive?: boolean

@@ -12,11 +12,11 @@ const defaultOptions: JsonOptions = Object.freeze({
     decoder: new TextDecoder('utf-8', {
         fatal: true
     }),
-    converters: new Map<TypeName, Converter<unknown>>([
-        ["number", convertNumber],
-        ["string", convertString],
-        ["object", convertObject]
-    ]),
+    converters: {
+        number: convertNumber,
+        string: convertString,
+        object: convertObject
+    },
     maxDepth: 64,
     allowTrailingCommas: false,
     fieldCaseInsensitive: false,
@@ -43,7 +43,7 @@ function convert<T>(ctx: ConvertState, meta: ConvertMeta, index: number, depth: 
     if (depth > options.maxDepth)
         throw new Error(`Max depth hit ${options.maxDepth}`)
 
-    const converter = options.converters.get((meta as Metadata).type)
+    const converter = options.converters[(meta as Metadata).type]
     if (!converter)
         throw new Error(`Converter not found for type ${(meta as Metadata).type}`)
 
