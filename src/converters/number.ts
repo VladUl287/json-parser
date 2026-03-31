@@ -24,144 +24,573 @@ for (let i = 1; i <= 308; i++) {
     POS_POW10[i] = POS_POW10[i - 1] * 10
 }
 
+const mantissaArray = new Uint8Array(256)
 const MAX_FAST_DIGITS = 15
 export function parseNumberF64(bytes: Uint8Array, start: number, end: number): number {
     const length = end - start
 
-    if (length <= MAX_FAST_DIGITS) {
-        let i = start
+    // if (length <= MAX_FAST_DIGITS) {
+    //     let i = start
 
-        const PLUS = 43
-        const MINUS = 45
+    //     const PLUS = 43
+    //     const MINUS = 45
 
-        const STATE_NEGATIVE = 0x01  // bit 0
-        const STATE_NONZERO = 0x02  // bit 1
-        const STATE_DECIMAL = 0x04  // bit 2
+    //     const STATE_NEGATIVE = 0x01  // bit 0
+    //     const STATE_NONZERO = 0x02  // bit 1
+    //     const STATE_DECIMAL = 0x04  // bit 2
 
-        let state = 0
+    //     let state = 0
 
-        if (bytes[i] === MINUS) {
-            state ^= STATE_NEGATIVE
-            i++
+    //     if (bytes[i] === MINUS) {
+    //         state ^= STATE_NEGATIVE
+    //         i++
+    //     }
+    //     else if (bytes[i] === PLUS) {
+    //         i++
+    //     }
+
+    //     const isDigit = (byte: number) => byte >= 48 && byte <= 57
+
+    //     const ZERO = 48
+    //     const DOT = 46
+    //     const EXPONENT = 69
+    //     const EXPONENT_UPPER = 101
+
+    //     let mantissa = 0
+    //     let digitsCount = 0
+    //     let scale = 0
+    //     let numberOfTrailingZeros = 0
+
+    //     while (i + 3 < end) {
+    //         const b1 = bytes[i]
+    //         const b2 = bytes[i + 1]
+    //         const b3 = bytes[i + 2]
+    //         const b4 = bytes[i + 3]
+
+    //         if ((b1 & 0xF0) === 0x30 && (b2 & 0xF0) === 0x30 &&
+    //             (b3 & 0xF0) === 0x30 && (b4 & 0xF0) === 0x30) {
+
+    //             mantissa = mantissa * 10000 +
+    //                 ((b1 & 0x0F) * 1000) +
+    //                 ((b2 & 0x0F) * 100) +
+    //                 ((b3 & 0x0F) * 10) +
+    //                 (b4 & 0x0F)
+
+    //             scale += 4
+    //             digitsCount += 4
+    //             i += 4
+    //             continue
+    //         }
+    //         break
+    //     }
+
+    //     while (i < end) {
+    //         const byte = bytes[i]
+
+    //         if (isDigit(byte)) {
+    //             if (byte !== ZERO || (state & STATE_NONZERO)) {
+    //                 mantissa = mantissa * 10 + (byte & 0x0F)
+
+    //                 numberOfTrailingZeros += byte === ZERO ? 1 : 0
+
+    //                 if ((state & STATE_DECIMAL) === 0) {
+    //                     scale++
+    //                 }
+
+    //                 state |= STATE_NONZERO
+    //                 digitsCount++
+    //             }
+    //             else if (state & STATE_DECIMAL) {
+    //                 scale--
+    //             }
+    //         }
+    //         else if (byte === DOT) {
+    //             state |= STATE_DECIMAL
+    //         }
+    //         else if (byte === EXPONENT || byte === EXPONENT_UPPER) {
+    //             i++
+
+    //             let signExp = 1
+    //             if (bytes[i] === MINUS) {
+    //                 signExp = -1
+    //                 i++
+    //             }
+    //             else if (bytes[i] === PLUS) {
+    //                 i++
+    //             }
+
+    //             let exponent = 0
+    //             while (isDigit(bytes[i])) {
+    //                 exponent = exponent * 10 + (bytes[i] - 48)
+    //                 i++
+    //             }
+
+    //             exponent *= signExp
+    //             scale += exponent
+    //             break
+    //         }
+
+    //         i++
+    //     }
+
+    //     const positiveExponent = Math.max(0, scale)
+    //     const integerDigitsPresent = Math.min(positiveExponent, digitsCount)
+    //     const fractionalDigitsPresent = digitsCount - integerDigitsPresent
+
+    //     if (digitsCount <= MAX_FAST_DIGITS) {
+    //         const exponent = scale - integerDigitsPresent - fractionalDigitsPresent
+    //         const fastExponent = Math.abs(exponent)
+
+    //         const MAX_SAFE_EXPONENT = 308
+
+    //         if (fastExponent <= MAX_SAFE_EXPONENT) {
+    //             const expScale = POS_POW10[fastExponent]
+
+    //             if (fractionalDigitsPresent !== 0) {
+    //                 mantissa /= expScale
+    //             }
+    //             else {
+    //                 mantissa *= expScale
+    //             }
+
+    //             if (state & STATE_NEGATIVE)
+    //                 return -mantissa
+
+    //             return mantissa
+    //         }
+    //     }
+    // }
+
+    let i = start
+
+    const PLUS = 43
+    const MINUS = 45
+
+    const STATE_NEGATIVE = 0x01  // bit 0
+    const STATE_NONZERO = 0x02  // bit 1
+    const STATE_DECIMAL = 0x04  // bit 2
+
+    let state = 0
+
+    if (bytes[i] === MINUS) {
+        state ^= STATE_NEGATIVE
+        i++
+    }
+    else if (bytes[i] === PLUS) {
+        i++
+    }
+
+    const isDigit = (byte: number) => byte >= 48 && byte <= 57
+
+    const ZERO = 48
+    const DOT = 46
+    const EXPONENT = 69
+    const EXPONENT_UPPER = 101
+
+    let mantissa = 0n
+    let digitsCount = 0
+    let scale = 0
+    let numberOfTrailingZeros = 0
+
+    while (i + 3 < end) {
+        const b1 = bytes[i]
+        const b2 = bytes[i + 1]
+        const b3 = bytes[i + 2]
+        const b4 = bytes[i + 3]
+
+        if ((b1 & 0xF0) === 0x30 && (b2 & 0xF0) === 0x30 &&
+            (b3 & 0xF0) === 0x30 && (b4 & 0xF0) === 0x30) {
+            mantissa = mantissa * 10000n
+            mantissa += BigInt(((b1 & 0x0F) * 1000) +
+                ((b2 & 0x0F) * 100) +
+                ((b3 & 0x0F) * 10) +
+                (b4 & 0x0F))
+
+            // mantissaArray[digitsCount] = b1 & 0x0F
+            // mantissaArray[digitsCount + 1] = b2 & 0x0F
+            // mantissaArray[digitsCount + 2] = b3 & 0x0F
+            // mantissaArray[digitsCount + 3] = b4 & 0x0F
+
+            scale += 4
+            digitsCount += 4
+            i += 4
+            continue
         }
-        else if (bytes[i] === PLUS) {
-            i++
-        }
+        break
+    }
 
-        const isDigit = (byte: number) => byte >= 48 && byte <= 57
+    while (i < end) {
+        const byte = bytes[i]
 
-        const ZERO = 48
-        const DOT = 46
-        const EXPONENT = 69
-        const EXPONENT_UPPER = 101
+        if (isDigit(byte)) {
+            if (byte !== ZERO || (state & STATE_NONZERO)) {
+                mantissa = mantissa * 10n + BigInt(byte & 0x0F)
+                // mantissaArray[digitsCount] = byte & 0x0F
 
-        let mantissa = 0
-        let digitsCount = 0
-        let scale = 0
-        let numberOfTrailingZeros = 0
+                numberOfTrailingZeros += byte === ZERO ? 1 : 0
 
-        while (i + 3 < end) {
-            const b1 = bytes[i]
-            const b2 = bytes[i + 1]
-            const b3 = bytes[i + 2]
-            const b4 = bytes[i + 3]
+                if ((state & STATE_DECIMAL) === 0) {
+                    scale++
+                }
 
-            if ((b1 & 0xF0) === 0x30 && (b2 & 0xF0) === 0x30 &&
-                (b3 & 0xF0) === 0x30 && (b4 & 0xF0) === 0x30) {
-
-                mantissa = mantissa * 10000 +
-                    ((b1 & 0x0F) * 1000) +
-                    ((b2 & 0x0F) * 100) +
-                    ((b3 & 0x0F) * 10) +
-                    (b4 & 0x0F)
-
-                scale += 4
-                digitsCount += 4
-                i += 4
-                continue
+                state |= STATE_NONZERO
+                digitsCount++
             }
+            else if (state & STATE_DECIMAL) {
+                scale--
+            }
+        }
+        else if (byte === DOT) {
+            state |= STATE_DECIMAL
+        }
+        else if (byte === EXPONENT || byte === EXPONENT_UPPER) {
+            i++
+
+            let signExp = 1
+            if (bytes[i] === MINUS) {
+                signExp = -1
+                i++
+            }
+            else if (bytes[i] === PLUS) {
+                i++
+            }
+
+            let exponent = 0
+            while (isDigit(bytes[i])) {
+                exponent = exponent * 10 + (bytes[i] - 48)
+                i++
+            }
+
+            exponent *= signExp
+            scale += exponent
             break
         }
 
-        while (i < end) {
-            const byte = bytes[i]
+        i++
+    }
 
-            if (isDigit(byte)) {
-                if (byte !== ZERO || (state & STATE_NONZERO)) {
-                    mantissa = mantissa * 10 + (byte & 0x0F)
+    const positiveExponent = Math.max(0, scale)
+    const integerDigitsPresent = Math.min(positiveExponent, digitsCount)
+    const fractionalDigitsPresent = digitsCount - integerDigitsPresent
 
-                    numberOfTrailingZeros += byte === ZERO ? 1 : 0
+    // return Number(mantissaArray[0] + mantissaArray[1])
 
-                    if ((state & STATE_DECIMAL) === 0) {
-                        scale++
-                    }
+    return numberToFloatingPointBitsSlow(
+        mantissa, digitsCount, scale, positiveExponent,
+        integerDigitsPresent, fractionalDigitsPresent, doublePrecisionFormat
+    )
 
-                    state |= STATE_NONZERO
-                    digitsCount++
-                }
-                else if (state & STATE_DECIMAL) {
-                    scale--
-                }
+    // let result = ''
+    // for (let i = start; i < end; i++)
+    //     result += String.fromCharCode(bytes[i])
+    // return Number(result)
+}
+
+function numberToFloatingPointBitsSlow(
+    mantissa: bigint,
+    digitsCount: number,
+    scale: number,
+    positiveExponent: number,
+    integerDigitsPresent: number,
+    fractionalDigitsPresent: number,
+    format: FloatFormatInfo
+): number {
+    const {
+        normalMantissaBits, zeroBits, denormalMantissaBits,
+        overflowDecimalExponent
+    } = format
+
+    const requiredBitsOfPrecision = normalMantissaBits + 1;
+
+    const integerDigitsMissing = positiveExponent - integerDigitsPresent
+
+    const integerLastIndex = integerDigitsPresent
+    const fractionalFirstIndex = integerLastIndex
+    const fractionalLastIndex = digitsCount
+
+    let integerValue = mantissa
+    if (fractionalDigitsPresent > 0) {
+        integerValue /= BigInt(Math.pow(10, fractionalLastIndex - fractionalFirstIndex))
+    }
+
+    if (integerDigitsMissing > 0) {
+        if (integerDigitsMissing > overflowDecimalExponent)
+            return Infinity
+
+        integerValue = integerValue * 10n ** BigInt(integerDigitsMissing)
+    }
+
+    const integerBitsOfPrecision = bitLength(integerValue)
+
+    if ((integerBitsOfPrecision >= requiredBitsOfPrecision) || (fractionalDigitsPresent === 0)) {
+        return convertBigIntegerToFloatingPointBits(
+            integerValue,
+            integerBitsOfPrecision,
+            fractionalDigitsPresent !== 0,
+            denormalMantissaBits
+        )
+    }
+
+    let fractionalDenominatorExponent = fractionalDigitsPresent
+
+    if (scale < 0) {
+        fractionalDenominatorExponent -= scale
+    }
+
+    if (integerBitsOfPrecision === 0 && (fractionalDenominatorExponent - digitsCount) > overflowDecimalExponent) {
+        return 0
+    }
+
+    const frac = mantissa.toString().substring(fractionalLastIndex - (fractionalLastIndex - fractionalFirstIndex))
+    let fractionalNumerator = BigInt(frac)
+
+    if (fractionalNumerator === 0n) {
+        return convertBigIntegerToFloatingPointBits(
+            integerValue,
+            integerBitsOfPrecision,
+            fractionalDigitsPresent !== 0,
+            denormalMantissaBits
+        )
+    }
+
+    let fractionalDenominator = 10n ** BigInt(fractionalDenominatorExponent)
+
+    const fractionalNumeratorBits = bitLength(fractionalNumerator)
+    const fractionalDenominatorBits = bitLength(fractionalDenominator)
+
+    let fractionalShift = 0
+
+    if (fractionalDenominatorBits > fractionalNumeratorBits) {
+        fractionalShift = fractionalDenominatorBits - fractionalNumeratorBits
+    }
+
+    if (fractionalShift > 0) {
+        fractionalNumerator <<= BigInt(fractionalShift)
+    }
+
+    const requiredFractionalBitsOfPrecision = requiredBitsOfPrecision - integerBitsOfPrecision;
+    let remainingBitsOfPrecisionRequired = requiredFractionalBitsOfPrecision;
+
+    if (integerBitsOfPrecision > 0) {
+
+
+        remainingBitsOfPrecisionRequired -= fractionalShift;
+    }
+
+    let fractionalExponent = fractionalShift
+
+    if (fractionalNumerator < fractionalDenominator) {
+        fractionalExponent++
+    }
+
+    fractionalNumerator = fractionalNumerator << BigInt(remainingBitsOfPrecisionRequired)
+
+    let [fractionalMantissa, fractionalRemainder] = divRem(fractionalNumerator, fractionalDenominator)
+
+    const fractionalMantissaBits = countSignificantBits1(fractionalMantissa)
+
+    if (fractionalMantissaBits > requiredFractionalBitsOfPrecision) {
+        const shift = (fractionalMantissaBits - requiredFractionalBitsOfPrecision)
+        fractionalMantissa >>= shift
+    }
+
+    const completeMantissa = (integerValue << BigInt(requiredFractionalBitsOfPrecision)) + BigInt(fractionalMantissa)
+    const finalExponent = (integerBitsOfPrecision > 0) ? (integerBitsOfPrecision) - 2 : -(fractionalExponent) - 1
+
+    return assembleFloatingPointBits(
+        completeMantissa,
+        finalExponent,
+        false,
+        doublePrecisionFormat
+    )
+}
+
+function divRem(dividend, divisor) {
+    if (divisor === 0n) {
+        throw new RangeError("Division by zero");
+    }
+
+    const quotient = dividend / divisor;
+    const remainder = dividend % divisor;
+
+    return [quotient, remainder];
+}
+
+function convertBigIntegerToFloatingPointBits(
+    value: bigint,
+    integerBitsOfPrecision: number,
+    hasNonZeroFractionalPart: boolean,
+    denormalMantissaBits: number,
+): number {
+    const baseExponent = denormalMantissaBits;
+
+    if (integerBitsOfPrecision <= 64) {
+        return assembleFloatingPointBits(
+            value & ((1n << 64n) - 1n),
+            baseExponent,
+            !hasNonZeroFractionalPart,
+            doublePrecisionFormat
+        )
+    }
+
+    const shiftAmount = integerBitsOfPrecision - 64;
+    const mantissa = (value >> BigInt(shiftAmount)) & ((1n << 64n) - 1n)
+    const exponent = baseExponent + shiftAmount;
+
+    const lowerBitsMask = (1n << BigInt(shiftAmount)) - 1n
+    const hasZeroTail = !hasNonZeroFractionalPart && ((value & lowerBitsMask) === 0n)
+
+    return assembleFloatingPointBits(
+        mantissa,
+        exponent,
+        hasZeroTail,
+        doublePrecisionFormat
+    )
+}
+
+function assembleFloatingPointBits(
+    initialMantissa: bigint,
+    initialExponent: number,
+    hasZeroTail: boolean,
+    format: FloatFormatInfo
+): number {
+    const initialMantissaBits = bitLength(initialMantissa)
+    const normalMantissaShift = format.normalMantissaBits - initialMantissaBits;
+    let normalExponent = initialExponent - normalMantissaShift;
+
+    let mantissa = initialMantissa
+    let exponent = normalExponent
+
+    if (normalExponent > format.maxBinaryExponent) {
+        return Infinity
+    }
+    else if (normalExponent < format.minBinaryExponent) {
+        const denormalMantissaShift = normalMantissaShift + normalExponent + format.exponentBias - 1;
+
+        exponent = -format.exponentBias;
+
+        if (denormalMantissaShift < 0) {
+            mantissa = rightShiftWithRounding(mantissa, -denormalMantissaShift, hasZeroTail);
+
+            if (mantissa === 0n) {
+                return format.zeroBits;
             }
-            else if (byte === DOT) {
-                state |= STATE_DECIMAL
+
+            if (mantissa > format.denormalMantissaMask) {
+                exponent = initialExponent - (denormalMantissaShift + 1) - normalMantissaShift;
             }
-            else if (byte === EXPONENT || byte === EXPONENT_UPPER) {
-                i++
-
-                let signExp = 1
-                if (bytes[i] === MINUS) {
-                    signExp = -1
-                    i++
-                }
-                else if (bytes[i] === PLUS) {
-                    i++
-                }
-
-                let exponent = 0
-                while (isDigit(bytes[i])) {
-                    exponent = exponent * 10 + (bytes[i] - 48)
-                    i++
-                }
-
-                exponent *= signExp
-                scale += exponent
-                break
-            }
-
-            i++
         }
+        else {
+            mantissa = mantissa << BigInt(denormalMantissaShift);
+        }
+    }
+    else {
+        if (normalMantissaShift < 0) {
+            mantissa = rightShiftWithRounding(mantissa, -normalMantissaShift, hasZeroTail);
 
-        const positiveExponent = Math.max(0, scale)
-        const integerDigitsPresent = Math.min(positiveExponent, digitsCount)
-        const fractionalDigitsPresent = digitsCount - integerDigitsPresent
+            if (mantissa > format.normalMantissaMask) {
+                mantissa = mantissa >> 1n;
+                exponent++;
 
-        if (digitsCount <= MAX_FAST_DIGITS) {
-            const exponent = scale - integerDigitsPresent - fractionalDigitsPresent
-            const fastExponent = Math.abs(exponent)
-
-            const MAX_SAFE_EXPONENT = 308
-
-            if (fastExponent <= MAX_SAFE_EXPONENT) {
-                const expScale = POS_POW10[fastExponent]
-
-                if (fractionalDigitsPresent !== 0) {
-                    mantissa /= expScale
+                if (exponent > format.maxBinaryExponent) {
+                    return Infinity
                 }
-                else {
-                    mantissa *= expScale
-                }
-
-                if (state & STATE_NEGATIVE)
-                    return -mantissa
-
-                return mantissa
             }
+        }
+        else if (normalMantissaShift > 0) {
+            mantissa = mantissa << BigInt(normalMantissaShift);
         }
     }
 
-    let result = ''
-    for (let i = start; i < end; i++)
-        result += String.fromCharCode(bytes[i])
-    return Number(result)
+    mantissa = mantissa & format.denormalMantissaMask
+
+    const normalizedMantissa = 1 + Number(mantissa) / Math.pow(2, 52)
+    return normalizedMantissa * Math.pow(2, exponent)
+}
+
+function countSignificantBits1(value: number): number {
+    if (value === 0) return 0
+    return value.toString(2).length
+}
+
+function rightShiftWithRounding(
+    value: bigint,
+    shift: number,
+    hasZeroTail: boolean
+): bigint {
+    if (shift === 0) return value;
+
+    const firstShift = shift - 1;
+    let result = value >> BigInt(firstShift);
+
+    const lastBitMask = 1n << BigInt(shift - 1);
+    const lastBit = (value & lastBitMask) !== 0n;
+
+    const lowerBitsMask = lastBitMask - 1n;
+    const hasLowerBits = (value & lowerBitsMask) !== 0n;
+
+    result = result >> 1n;
+
+    if (lastBit && (hasLowerBits || hasZeroTail || (result & 1n) === 1n)) {
+        result = result + 1n;
+    }
+
+    return result;
+}
+
+function bitLength(value: bigint): number {
+    if (value === 0n) return 0
+
+    let bits = 0
+    let temp = value
+
+    while (temp > 0xFFFFFFFFn) {
+        temp >>= 32n
+        bits += 32
+    }
+
+    const lastChunk = Number(temp)
+    return bits + (32 - Math.clz32(lastChunk))
+}
+
+interface FloatFormatInfo {
+    normalMantissaBits: number
+    denormalMantissaBits: number
+    exponentBias: number
+    maxBinaryExponent: number
+    minBinaryExponent: number
+    exponentBits: number
+    normalMantissaMask: bigint
+    denormalMantissaMask: bigint
+    zeroBits: number
+    overflowDecimalExponent: number
+}
+
+interface IFloatInfo {
+    denormalMantissaBits: number
+    minFastFloatDecimalExponent: number
+    maxFastFloatDecimalExponent: number
+    infinityExponent: number
+    minExponentRoundToEven: number
+    maxExponentRoundToEven: number
+    maxBinaryExponent: number
+    denormalMantissaMask: bigint
+}
+
+interface IFloatResult {
+    exponent: number
+    mantissa: bigint
+}
+
+const doublePrecisionFormat: FloatFormatInfo = {
+    normalMantissaBits: 53,      // 52 stored + 1 hidden
+    denormalMantissaBits: 52,
+    exponentBias: 1023,
+    maxBinaryExponent: 1023,
+    minBinaryExponent: -1022,
+    exponentBits: 11,
+    normalMantissaMask: (1n << 53n) - 1n,
+    denormalMantissaMask: (1n << 52n) - 1n,
+    zeroBits: 0,
+    overflowDecimalExponent: 308
 }
