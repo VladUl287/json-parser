@@ -513,6 +513,60 @@ function countSignificantBits1(value: number): number {
     return value.toString(2).length
 }
 
+function shiftRightLogical(high: number, low: number, shift: number) {
+    if (shift === 0) return { high, low }
+    if (shift >= 64) return { high: 0, low: 0 }
+
+    if (shift < 32) {
+        const newHigh = high >>> shift
+        const newLow = (low >>> shift) | ((high & ((1 << shift) - 1)) << (32 - shift))
+        return { high: newHigh, low: newLow >>> 0 }
+    }
+
+    const newHigh = 0;
+    const newLow = high >>> (shift - 32)
+    return { high: newHigh, low: newLow >>> 0 }
+}
+
+function and(high: number, low: number, num: number) {
+    return {
+        high: high,
+        low: (low & (num >>> 0)) >>> 0
+    };
+}
+
+function combineToNumber(high: number, low: number) {
+    return (high >>> 0) * 0x100000000 + (low >>> 0);
+}
+
+function rightShiftWithRoundingSlow(
+    value: { high: number, low: number },
+    shift: number,
+    hasZeroTail: boolean
+): { high: number, low: number } {
+    if (shift === 0) return value;
+
+    const firstShift = shift - 1
+    let result = shiftRightLogical(value.high, value.low, firstShift)
+
+    const lastBitMask = 1 << (shift - 1)
+    const lastBit = (value.low & lastBitMask) !== 0
+
+    const lowerBitsMask = lastBitMask - 1
+    const hasLowerBits = (value.low & lowerBitsMask) !== 0
+
+    result = shiftRightLogical(result.high, result.low, 1)
+
+    const andResult = and(result.high, result.low, 1)
+    let numberResult = combineToNumber(andResult.high, andResult.low)
+    if (lastBit && (hasLowerBits || hasZeroTail || numberResult === 1)) {
+        numberResult = numberResult + 1
+    }
+
+    return andResult
+}
+
+
 function rightShiftWithRounding(
     value: bigint,
     shift: number,
@@ -523,13 +577,13 @@ function rightShiftWithRounding(
     const firstShift = shift - 1;
     let result = value >> BigInt(firstShift);
 
-    const lastBitMask = 1n << BigInt(shift - 1);
-    const lastBit = (value & lastBitMask) !== 0n;
+    const lastBitMask = 1n << BigInt(shift - 1)
+    const lastBit = (value & lastBitMask) !== 0n
 
     const lowerBitsMask = lastBitMask - 1n;
     const hasLowerBits = (value & lowerBitsMask) !== 0n;
 
-    result = result >> 1n;
+    result = result >> 1n
 
     if (lastBit && (hasLowerBits || hasZeroTail || (result & 1n) === 1n)) {
         result = result + 1n;
