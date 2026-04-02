@@ -228,34 +228,12 @@ export function parseNumberF64(bytes: Uint8Array, start: number, end: number): n
         mantissa = mantissa * POW10[tempDigits] + BigInt(tempNum)
     }
 
-    const words: number[] = [0]
-    const radix = 10
-    const wordSize = 26;
-    const maxWordValue = 1 << wordSize
-    let totalWords = 0;
-    let msWord = 0;
-    let sign = 1;
-    const DB = 26; // bits per word
-    const DM = (1 << DB) - 1;
-
     while (i < end) {
         const byte = bytes[i]
 
         if (isDigit(byte)) {
             if (byte !== ZERO || (state & STATE_NONZERO)) {
                 const digit = byte & 0x0F
-
-                // let carry = digit
-                // for (let j = 0; j < words.length; j++) {
-                //     const product = words[j] * radix + carry
-                //     words[j] = product & (maxWordValue - 1)
-                //     carry = Math.floor(product / maxWordValue)
-                // }
-
-                // while (carry > 0) {
-                //     words.push(carry & (maxWordValue - 1))
-                //     carry = Math.floor(carry / maxWordValue)
-                // }
 
                 mantissa = mantissa * 10n + BigInt(digit)
 
@@ -346,8 +324,6 @@ function numberToFloatingPointBitsSlow(
     }
 
     const integerBitsOfPrecision = bitLength(integerValue)
-
-    // return integerBitsOfPrecision
 
     if ((integerBitsOfPrecision >= requiredBitsOfPrecision) || (fractionalDigitsPresent === 0)) {
         return convertBigIntegerToFloatingPointBits(
@@ -564,48 +540,6 @@ function rightShiftWithRounding(
     return result
 }
 
-function bitLengthSlow(words: number[]) {
-    const wordsCount = words.length
-    if (wordsCount <= 0)
-        return 0
-
-    const bitsPerDigit = 26
-    const digitMask = (1 << bitsPerDigit) - 1
-    return bitsPerDigit * (wordsCount - 1) + nbits(words[wordsCount - 1] ^ (0 & digitMask), wordsCount)
-}
-
-// function bnBitLength() {
-//     if (this.t <= 0) return 0;
-//     return (
-//         this.DB * (this.t - 1) + nbits(this[this.t - 1] ^ (this.s & this.DM))
-//     );
-// }
-
-function nbits(x: number, t: number) {
-    var r = 1;
-    if ((t = x >>> 16) != 0) {
-        x = t;
-        r += 16;
-    }
-    if ((t = x >> 8) != 0) {
-        x = t;
-        r += 8;
-    }
-    if ((t = x >> 4) != 0) {
-        x = t;
-        r += 4;
-    }
-    if ((t = x >> 2) != 0) {
-        x = t;
-        r += 2;
-    }
-    if ((t = x >> 1) != 0) {
-        x = t;
-        r += 1;
-    }
-    return r;
-}
-
 function bitLength(value: bigint): number {
     if (value === 0n) return 0
 
@@ -632,22 +566,6 @@ interface FloatFormatInfo {
     denormalMantissaMask: bigint
     zeroBits: number
     overflowDecimalExponent: number
-}
-
-interface IFloatInfo {
-    denormalMantissaBits: number
-    minFastFloatDecimalExponent: number
-    maxFastFloatDecimalExponent: number
-    infinityExponent: number
-    minExponentRoundToEven: number
-    maxExponentRoundToEven: number
-    maxBinaryExponent: number
-    denormalMantissaMask: bigint
-}
-
-interface IFloatResult {
-    exponent: number
-    mantissa: bigint
 }
 
 const doublePrecisionFormat: FloatFormatInfo = {
