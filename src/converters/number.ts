@@ -333,10 +333,9 @@ function numberToFloatingPointBitsSlow(
     const fractionalFirstIndex = integerLastIndex
     const fractionalLastIndex = digitsCount
 
-    let integerValue = mantissa
-    if (fractionalDigitsPresent > 0) {
-        integerValue /= BigInt(Math.pow(10, fractionalLastIndex - fractionalFirstIndex))
-    }
+    const divisor = 10n ** BigInt(fractionalLastIndex - fractionalFirstIndex)
+
+    let integerValue = mantissa / divisor
 
     if (integerDigitsMissing > 0) {
         if (integerDigitsMissing > overflowDecimalExponent)
@@ -369,9 +368,7 @@ function numberToFloatingPointBitsSlow(
     if (integerBitsOfPrecision === 0 && (fractionalDenominatorExponent - digitsCount) > overflowDecimalExponent) {
         return 0
     }
-
-    const frac = mantissa.toString().substring(fractionalLastIndex - (fractionalLastIndex - fractionalFirstIndex))
-    let fractionalNumerator = BigInt(frac)
+    let fractionalNumerator = mantissa % divisor
 
     if (fractionalNumerator === 0n) {
         return convertBigIntegerToFloatingPointBits(
