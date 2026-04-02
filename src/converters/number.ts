@@ -20,11 +20,12 @@ export function convertNumber(
 
 const decoder = new TextDecoder('utf-8', { fatal: true })
 const POS_POW10 = [1]
+const POW10 = [1n]
 for (let i = 1; i <= 308; i++) {
     POS_POW10[i] = POS_POW10[i - 1] * 10
+    POW10[i] = POW10[i - 1] * 10n
 }
 
-const mantissaArray = new Uint8Array(256)
 const MAX_FAST_DIGITS = 15
 export function parseNumberF64(bytes: Uint8Array, start: number, end: number): number {
     const length = end - start
@@ -170,6 +171,8 @@ export function parseNumberF64(bytes: Uint8Array, start: number, end: number): n
     const STATE_NONZERO = 0x02  // bit 1
     const STATE_DECIMAL = 0x04  // bit 2
 
+    const isDigit = (byte: number) => byte >= 48 && byte <= 57
+
     let state = 0
 
     if (bytes[i] === MINUS) {
@@ -179,8 +182,6 @@ export function parseNumberF64(bytes: Uint8Array, start: number, end: number): n
     else if (bytes[i] === PLUS) {
         i++
     }
-
-    const isDigit = (byte: number) => byte >= 48 && byte <= 57
 
     const ZERO = 48
     const DOT = 46
@@ -192,65 +193,39 @@ export function parseNumberF64(bytes: Uint8Array, start: number, end: number): n
     let scale = 0
     let numberOfTrailingZeros = 0
 
-    while (i + 7 < end) {
-        const b1 = bytes[i]
-        const b2 = bytes[i + 1]
-        const b3 = bytes[i + 2]
-        const b4 = bytes[i + 3]
-        const b5 = bytes[i + 4]
-        const b6 = bytes[i + 5]
-        const b7 = bytes[i + 6]
-        const b8 = bytes[i + 7]
-
-        if ((b1 & 0xF0) === 0x30 && (b2 & 0xF0) === 0x30 &&
-            (b3 & 0xF0) === 0x30 && (b4 & 0xF0) === 0x30 &&
-            (b5 & 0xF0) === 0x30 && (b6 & 0xF0) === 0x30 &&
-            (b7 & 0xF0) === 0x30 && (b8 & 0xF0) === 0x30) {
-            mantissa = mantissa * 100000000n
-            mantissa += BigInt(
-                ((b1 & 0x0F) * 10000000) +
-                ((b2 & 0x0F) * 1000000) +
-                ((b3 & 0x0F) * 100000) +
-                ((b4 & 0x0F) * 10000) +
-                ((b5 & 0x0F) * 1000) +
-                ((b6 & 0x0F) * 100) +
-                ((b7 & 0x0F) * 10) +
-                ((b8 & 0x0F))
-            )
-
-            scale += 8
-            digitsCount += 8
-            i += 8
-            continue
-        }
-        break
-    }
-
+    let tempNum = 0
+    let tempDigits = 0
     while (i + 3 < end) {
         const b1 = bytes[i]
         const b2 = bytes[i + 1]
         const b3 = bytes[i + 2]
         const b4 = bytes[i + 3]
 
-        if ((b1 & 0xF0) === 0x30 && (b2 & 0xF0) === 0x30 &&
-            (b3 & 0xF0) === 0x30 && (b4 & 0xF0) === 0x30) {
-            mantissa = mantissa * 10000n
-            mantissa += BigInt(((b1 & 0x0F) * 1000) +
+        if (isDigit(b1) && isDigit(b2) && isDigit(b3) && isDigit(b4)) {
+            tempNum = tempNum * 10000 +
+                ((b1 & 0x0F) * 1000) +
                 ((b2 & 0x0F) * 100) +
                 ((b3 & 0x0F) * 10) +
-                (b4 & 0x0F))
+                ((b4 & 0x0F))
+            tempDigits += 4
 
-            // mantissaArray[digitsCount] = b1 & 0x0F
-            // mantissaArray[digitsCount + 1] = b2 & 0x0F
-            // mantissaArray[digitsCount + 2] = b3 & 0x0F
-            // mantissaArray[digitsCount + 3] = b4 & 0x0F
+            if (tempDigits >= 15) {
+                mantissa = mantissa * POW10[tempDigits] + BigInt(tempNum)
+                tempDigits = 0
+                tempNum = 0
+            }
 
-            scale += 4
             digitsCount += 4
+            scale += 4
             i += 4
             continue
         }
+
         break
+    }
+
+    if (tempDigits > 0) {
+        mantissa = mantissa * POW10[tempDigits] + BigInt(tempNum)
     }
 
     const words: number[] = [0]
@@ -283,7 +258,6 @@ export function parseNumberF64(bytes: Uint8Array, start: number, end: number): n
                 // }
 
                 mantissa = mantissa * 10n + BigInt(digit)
-                // mantissaArray[digitsCount] = byte & 0x0F
 
                 numberOfTrailingZeros += byte === ZERO ? 1 : 0
 
@@ -331,17 +305,10 @@ export function parseNumberF64(bytes: Uint8Array, start: number, end: number): n
     const integerDigitsPresent = Math.min(positiveExponent, digitsCount)
     const fractionalDigitsPresent = digitsCount - integerDigitsPresent
 
-    // return Number(mantissaArray[0] + mantissaArray[1])
-
     return numberToFloatingPointBitsSlow(
         mantissa, digitsCount, scale, positiveExponent,
         integerDigitsPresent, fractionalDigitsPresent, doublePrecisionFormat
     )
-
-    // let result = ''
-    // for (let i = start; i < end; i++)
-    //     result += String.fromCharCode(bytes[i])
-    // return Number(result)
 }
 
 function numberToFloatingPointBitsSlow(
@@ -378,7 +345,11 @@ function numberToFloatingPointBitsSlow(
         integerValue = integerValue * 10n ** BigInt(integerDigitsMissing)
     }
 
+    // return Number(integerValue)
+
     const integerBitsOfPrecision = bitLength(integerValue)
+
+    // return integerBitsOfPrecision
 
     if ((integerBitsOfPrecision >= requiredBitsOfPrecision) || (fractionalDigitsPresent === 0)) {
         return convertBigIntegerToFloatingPointBits(
