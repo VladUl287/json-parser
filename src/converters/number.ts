@@ -219,12 +219,36 @@ export function parseNumberF64(bytes: Uint8Array, start: number, end: number): n
         break
     }
 
+    const words: number[] = [0]
+    const radix = 10
+    const wordSize = 26;
+    const maxWordValue = 1 << wordSize
+    let totalWords = 0;
+    let msWord = 0;
+    let sign = 1;
+    const DB = 26; // bits per word
+    const DM = (1 << DB) - 1;
+
     while (i < end) {
         const byte = bytes[i]
 
         if (isDigit(byte)) {
             if (byte !== ZERO || (state & STATE_NONZERO)) {
-                mantissa = mantissa * 10n + BigInt(byte & 0x0F)
+                const digit = byte & 0x0F
+
+                // let carry = digit
+                // for (let j = 0; j < words.length; j++) {
+                //     const product = words[j] * radix + carry
+                //     words[j] = product & (maxWordValue - 1)
+                //     carry = Math.floor(product / maxWordValue)
+                // }
+
+                // while (carry > 0) {
+                //     words.push(carry & (maxWordValue - 1))
+                //     carry = Math.floor(carry / maxWordValue)
+                // }
+
+                mantissa = mantissa * 10n + BigInt(digit)
                 // mantissaArray[digitsCount] = byte & 0x0F
 
                 numberOfTrailingZeros += byte === ZERO ? 1 : 0
@@ -399,6 +423,7 @@ function numberToFloatingPointBitsSlow(
 
     return assembleFloatingPointBits(
         completeMantissa,
+        bitLength(completeMantissa),
         finalExponent,
         false,
         doublePrecisionFormat
@@ -425,23 +450,26 @@ function convertBigIntegerToFloatingPointBits(
     const baseExponent = denormalMantissaBits;
 
     if (integerBitsOfPrecision <= 64) {
+        const initialMantissa = value & ((1n << 64n) - 1n)
         return assembleFloatingPointBits(
-            value & ((1n << 64n) - 1n),
+            initialMantissa,
+            bitLength(initialMantissa),
             baseExponent,
             !hasNonZeroFractionalPart,
             doublePrecisionFormat
         )
     }
 
-    const shiftAmount = integerBitsOfPrecision - 64;
+    const shiftAmount = integerBitsOfPrecision - 64
     const mantissa = (value >> BigInt(shiftAmount)) & ((1n << 64n) - 1n)
-    const exponent = baseExponent + shiftAmount;
+    const exponent = baseExponent + shiftAmount
 
     const lowerBitsMask = (1n << BigInt(shiftAmount)) - 1n
     const hasZeroTail = !hasNonZeroFractionalPart && ((value & lowerBitsMask) === 0n)
 
     return assembleFloatingPointBits(
         mantissa,
+        64,
         exponent,
         hasZeroTail,
         doublePrecisionFormat
@@ -450,24 +478,24 @@ function convertBigIntegerToFloatingPointBits(
 
 function assembleFloatingPointBits(
     initialMantissa: bigint,
+    initialMantissaBits: number,
     initialExponent: number,
     hasZeroTail: boolean,
     format: FloatFormatInfo
 ): number {
-    const initialMantissaBits = bitLength(initialMantissa)
-    const normalMantissaShift = format.normalMantissaBits - initialMantissaBits;
-    let normalExponent = initialExponent - normalMantissaShift;
+    const normalMantissaShift = format.normalMantissaBits - initialMantissaBits
+    const normalExponent = initialExponent - normalMantissaShift
+
+    if (normalExponent > format.maxBinaryExponent)
+        return Infinity
 
     let mantissa = initialMantissa
     let exponent = normalExponent
 
-    if (normalExponent > format.maxBinaryExponent) {
-        return Infinity
-    }
-    else if (normalExponent < format.minBinaryExponent) {
-        const denormalMantissaShift = normalMantissaShift + normalExponent + format.exponentBias - 1;
+    if (normalExponent < format.minBinaryExponent) {
+        const denormalMantissaShift = normalMantissaShift + normalExponent + format.exponentBias - 1
 
-        exponent = -format.exponentBias;
+        exponent = -format.exponentBias
 
         if (denormalMantissaShift < 0) {
             mantissa = rightShiftWithRounding(mantissa, -denormalMantissaShift, hasZeroTail);
@@ -489,12 +517,11 @@ function assembleFloatingPointBits(
             mantissa = rightShiftWithRounding(mantissa, -normalMantissaShift, hasZeroTail);
 
             if (mantissa > format.normalMantissaMask) {
-                mantissa = mantissa >> 1n;
-                exponent++;
+                mantissa = mantissa >> 1n
+                exponent++
 
-                if (exponent > format.maxBinaryExponent) {
+                if (exponent > format.maxBinaryExponent)
                     return Infinity
-                }
             }
         }
         else if (normalMantissaShift > 0) {
@@ -513,83 +540,67 @@ function countSignificantBits1(value: number): number {
     return value.toString(2).length
 }
 
-function shiftRightLogical(high: number, low: number, shift: number) {
-    if (shift === 0) return { high, low }
-    if (shift >= 64) return { high: 0, low: 0 }
-
-    if (shift < 32) {
-        const newHigh = high >>> shift
-        const newLow = (low >>> shift) | ((high & ((1 << shift) - 1)) << (32 - shift))
-        return { high: newHigh, low: newLow >>> 0 }
-    }
-
-    const newHigh = 0;
-    const newLow = high >>> (shift - 32)
-    return { high: newHigh, low: newLow >>> 0 }
-}
-
-function and(high: number, low: number, num: number) {
-    return {
-        high: high,
-        low: (low & (num >>> 0)) >>> 0
-    };
-}
-
-function combineToNumber(high: number, low: number) {
-    return (high >>> 0) * 0x100000000 + (low >>> 0);
-}
-
-function rightShiftWithRoundingSlow(
-    value: { high: number, low: number },
-    shift: number,
-    hasZeroTail: boolean
-): { high: number, low: number } {
-    if (shift === 0) return value;
-
-    const firstShift = shift - 1
-    let result = shiftRightLogical(value.high, value.low, firstShift)
-
-    const lastBitMask = 1 << (shift - 1)
-    const lastBit = (value.low & lastBitMask) !== 0
-
-    const lowerBitsMask = lastBitMask - 1
-    const hasLowerBits = (value.low & lowerBitsMask) !== 0
-
-    result = shiftRightLogical(result.high, result.low, 1)
-
-    const andResult = and(result.high, result.low, 1)
-    let numberResult = combineToNumber(andResult.high, andResult.low)
-    if (lastBit && (hasLowerBits || hasZeroTail || numberResult === 1)) {
-        numberResult = numberResult + 1
-    }
-
-    return andResult
-}
-
-
 function rightShiftWithRounding(
     value: bigint,
     shift: number,
     hasZeroTail: boolean
 ): bigint {
-    if (shift === 0) return value;
+    if (shift === 0) return value
 
-    const firstShift = shift - 1;
-    let result = value >> BigInt(firstShift);
+    let result = value >> BigInt(shift)
 
     const lastBitMask = 1n << BigInt(shift - 1)
     const lastBit = (value & lastBitMask) !== 0n
 
-    const lowerBitsMask = lastBitMask - 1n;
-    const hasLowerBits = (value & lowerBitsMask) !== 0n;
+    const lowerBitsMask = lastBitMask - 1n
+    const hasLowerBits = (value & lowerBitsMask) !== 0n
 
-    result = result >> 1n
+    if (lastBit && (hasLowerBits || hasZeroTail || (result & 1n)))
+        return result + 1n
 
-    if (lastBit && (hasLowerBits || hasZeroTail || (result & 1n) === 1n)) {
-        result = result + 1n;
+    return result
+}
+
+function bitLengthSlow(words: number[]) {
+    const wordsCount = words.length
+    if (wordsCount <= 0)
+        return 0
+
+    const bitsPerDigit = 26
+    const digitMask = (1 << bitsPerDigit) - 1
+    return bitsPerDigit * (wordsCount - 1) + nbits(words[wordsCount - 1] ^ (0 & digitMask), wordsCount)
+}
+
+// function bnBitLength() {
+//     if (this.t <= 0) return 0;
+//     return (
+//         this.DB * (this.t - 1) + nbits(this[this.t - 1] ^ (this.s & this.DM))
+//     );
+// }
+
+function nbits(x: number, t: number) {
+    var r = 1;
+    if ((t = x >>> 16) != 0) {
+        x = t;
+        r += 16;
     }
-
-    return result;
+    if ((t = x >> 8) != 0) {
+        x = t;
+        r += 8;
+    }
+    if ((t = x >> 4) != 0) {
+        x = t;
+        r += 4;
+    }
+    if ((t = x >> 2) != 0) {
+        x = t;
+        r += 2;
+    }
+    if ((t = x >> 1) != 0) {
+        x = t;
+        r += 1;
+    }
+    return r;
 }
 
 function bitLength(value: bigint): number {
