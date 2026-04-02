@@ -192,6 +192,40 @@ export function parseNumberF64(bytes: Uint8Array, start: number, end: number): n
     let scale = 0
     let numberOfTrailingZeros = 0
 
+    while (i + 7 < end) {
+        const b1 = bytes[i]
+        const b2 = bytes[i + 1]
+        const b3 = bytes[i + 2]
+        const b4 = bytes[i + 3]
+        const b5 = bytes[i + 4]
+        const b6 = bytes[i + 5]
+        const b7 = bytes[i + 6]
+        const b8 = bytes[i + 7]
+
+        if ((b1 & 0xF0) === 0x30 && (b2 & 0xF0) === 0x30 &&
+            (b3 & 0xF0) === 0x30 && (b4 & 0xF0) === 0x30 &&
+            (b5 & 0xF0) === 0x30 && (b6 & 0xF0) === 0x30 &&
+            (b7 & 0xF0) === 0x30 && (b8 & 0xF0) === 0x30) {
+            mantissa = mantissa * 100000000n
+            mantissa += BigInt(
+                ((b1 & 0x0F) * 10000000) +
+                ((b2 & 0x0F) * 1000000) +
+                ((b3 & 0x0F) * 100000) +
+                ((b4 & 0x0F) * 10000) +
+                ((b5 & 0x0F) * 1000) +
+                ((b6 & 0x0F) * 100) +
+                ((b7 & 0x0F) * 10) +
+                ((b8 & 0x0F))
+            )
+
+            scale += 8
+            digitsCount += 8
+            i += 8
+            continue
+        }
+        break
+    }
+
     while (i + 3 < end) {
         const b1 = bytes[i]
         const b2 = bytes[i + 1]
