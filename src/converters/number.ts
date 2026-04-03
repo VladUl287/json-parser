@@ -209,7 +209,7 @@ export function parseNumberF64(bytes: Uint8Array, start: number, end: number): n
                 ((b4 & 0x0F))
             tempDigits += 4
 
-            if (tempDigits >= 15) {
+            if (tempDigits >= 12) {
                 mantissa = mantissa * POW10[tempDigits] + BigInt(tempNum)
                 tempDigits = 0
                 tempNum = 0
