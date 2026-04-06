@@ -207,7 +207,7 @@ export function parseNumberF64(bytes: Uint8Array, start: number, end: number): n
                 (((((b1 & 0x0F) * 10 + (b2 & 0x0F)) * 10 + (b3 & 0x0F)) * 10 + (b4 & 0x0F)) * 10 + (b5 & 0x0F))
             tempDigits += 5
 
-            if (tempDigits === 15) {
+            if (tempDigits >= 15) {
                 mantissa = mantissa * POW10[tempDigits] + BigInt(tempNum)
                 tempDigits = 0
                 tempNum = 0
@@ -224,6 +224,8 @@ export function parseNumberF64(bytes: Uint8Array, start: number, end: number): n
 
     if (tempDigits > 0) {
         mantissa = mantissa * POW10[tempDigits] + BigInt(tempNum)
+        tempDigits = 0
+        tempNum = 0
     }
 
     while (i < end) {
@@ -233,7 +235,13 @@ export function parseNumberF64(bytes: Uint8Array, start: number, end: number): n
             if (byte !== ZERO || (state & STATE_NONZERO)) {
                 const digit = byte & 0x0F
 
-                mantissa = mantissa * 10n + BigInt(digit)
+                tempNum = tempNum * 10 + digit
+                tempDigits++
+                if (tempDigits >= 8) {
+                    mantissa = mantissa * 100000000n + BigInt(tempNum | 0)
+                    tempDigits = 0
+                    tempNum = 0
+                }
 
                 numberOfTrailingZeros += byte === ZERO ? 1 : 0
 
@@ -275,6 +283,10 @@ export function parseNumberF64(bytes: Uint8Array, start: number, end: number): n
         }
 
         i++
+    }
+
+    if (tempDigits > 0) {
+        mantissa = mantissa * POW10[tempDigits] + BigInt(tempNum | 0)
     }
 
     const positiveExponent = Math.max(0, scale)
