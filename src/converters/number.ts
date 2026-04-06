@@ -203,10 +203,7 @@ export function parseNumberF64(bytes: Uint8Array, start: number, end: number): n
 
         if (isDigit(b1) && isDigit(b2) && isDigit(b3) && isDigit(b4)) {
             tempNum = tempNum * 10000 +
-                ((b1 & 0x0F) * 1000) +
-                ((b2 & 0x0F) * 100) +
-                ((b3 & 0x0F) * 10) +
-                ((b4 & 0x0F))
+                ((((b1 & 0x0F) * 10 + (b2 & 0x0F)) * 10 + (b3 & 0x0F)) * 10 + (b4 & 0x0F))
             tempDigits += 4
 
             if (tempDigits >= 12) {
