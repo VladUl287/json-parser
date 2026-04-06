@@ -195,26 +195,27 @@ export function parseNumberF64(bytes: Uint8Array, start: number, end: number): n
 
     let tempNum = 0
     let tempDigits = 0
-    while (i + 3 < end) {
+    while (i + 4 < end) {
         const b1 = bytes[i]
         const b2 = bytes[i + 1]
         const b3 = bytes[i + 2]
         const b4 = bytes[i + 3]
+        const b5 = bytes[i + 4]
 
-        if (isDigit(b1) && isDigit(b2) && isDigit(b3) && isDigit(b4)) {
+        if (isDigit(b1) && isDigit(b2) && isDigit(b3) && isDigit(b4) && isDigit(b5)) {
             tempNum = tempNum * 10000 +
-                ((((b1 & 0x0F) * 10 + (b2 & 0x0F)) * 10 + (b3 & 0x0F)) * 10 + (b4 & 0x0F))
-            tempDigits += 4
+                (((((b1 & 0x0F) * 10 + (b2 & 0x0F)) * 10 + (b3 & 0x0F)) * 10 + (b4 & 0x0F)) * 10 + (b5 & 0x0F))
+            tempDigits += 5
 
-            if (tempDigits >= 12) {
+            if (tempDigits === 15) {
                 mantissa = mantissa * POW10[tempDigits] + BigInt(tempNum)
                 tempDigits = 0
                 tempNum = 0
             }
 
-            digitsCount += 4
-            scale += 4
-            i += 4
+            digitsCount += 5
+            scale += 5
+            i += 5
             continue
         }
 
