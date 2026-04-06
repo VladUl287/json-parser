@@ -409,7 +409,7 @@ function numberToFloatingPointBitsSlow(
     )
 }
 
-function divRem(dividend, divisor) {
+function divRem(dividend: any, divisor: any) {
     if (divisor === 0n) {
         throw new RangeError("Division by zero");
     }
